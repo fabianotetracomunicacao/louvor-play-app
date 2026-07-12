@@ -1,0 +1,28 @@
+# Dependências
+node_modules/
+venv/
+.env
+.env.local
+
+# Build
+dist/
+build/
+*.pyc
+__pycache__/
+
+# IDEs
+.vscode/
+.idea/
+.DS_Store
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Ignored assets and backups
+*.zip
+*.tar.gz
+Fotos de fundo/
+Vídeos capa fundo/
+ícone animado/

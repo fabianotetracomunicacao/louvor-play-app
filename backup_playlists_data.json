@@ -1,0 +1,35 @@
+[
+  {
+    "id": "636e7707-a63b-4a9c-95fc-8348a02d7d66",
+    "name": "Play editor Publica",
+    "is_public": true,
+    "owner_id": "710d8670-fbc1-45a5-8d74-e05945c4e154",
+    "created_at": "2025-12-22T20:10:31.758477+00:00",
+    "updated_at": "2025-12-24T16:22:23.675+00:00",
+    "is_collaborative": false,
+    "scheduled_date": null,
+    "description": null
+  },
+  {
+    "id": "17f03c48-284f-43b1-a413-3ef2de90d8e5",
+    "name": "Publica ADMIN",
+    "is_public": true,
+    "owner_id": "75f23839-79b2-49c2-a4f7-928bb320c251",
+    "created_at": "2025-12-24T17:33:20.098947+00:00",
+    "updated_at": "2025-12-24T17:33:19.456+00:00",
+    "is_collaborative": false,
+    "scheduled_date": null,
+    "description": null
+  },
+  {
+    "id": "61f6cb5d-867a-4f6f-adf1-8000fbe05b5e",
+    "name": "Play Musico Publica",
+    "is_public": true,
+    "owner_id": "ae5cdbd1-5c4b-42b6-86f3-d4199938d895",
+    "created_at": "2025-12-28T12:26:59.221985+00:00",
+    "updated_at": "2025-12-28T12:27:00.331+00:00",
+    "is_collaborative": false,
+    "scheduled_date": null,
+    "description": null
+  }
+]

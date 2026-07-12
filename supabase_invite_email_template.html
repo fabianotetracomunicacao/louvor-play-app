@@ -1,0 +1,119 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="pt-BR">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ if .Data.is_invite }}Você foi Convidado! - LouvorPlay{{ else }}Confirme sua conta - LouvorPlay{{ end }}</title>
+</head>
+
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #4f46e5; background-image: linear-gradient(135deg, #4f46e5 0%, #aa00ff 100%);">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="min-height: 100vh;">
+        <tr>
+            <td align="center" style="padding: 40px 20px;">
+                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 500px; background-color: #ffffff; border-radius: 24px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);">
+                    <tr>
+                        <td align="center" style="padding: 50px 40px;">
+                            <!-- Header Logo Icon -->
+                            <table border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 30px;">
+                                <tr>
+                                    <td align="center" style="width: 80px; height: 80px; background-color: #aa00ff; border-radius: 20px;">
+                                        <img src="https://louvorplay.com.br/logo.png" alt="LouvorPlay Logo" width="60" style="display: block; border: 0;" />
+                                    </td>
+                                </tr>
+                            </table>
+
+                            {{ if .Data.is_invite }}
+                                <!-- VISÃO PARA CONVIDADO PELA IGREJA -->
+                                <h1 style="color: #1a202c; font-size: 26px; font-weight: 900; margin: 0 0 15px 0; letter-spacing: -0.5px; line-height: 1.2;">Você foi Convidado!</h1>
+                                <p style="color: #4a5568; font-size: 16px; margin: 0 0 30px 0; line-height: 1.6;">
+                                    Sua igreja criou um acesso para você no <strong>LouvorPlay</strong>, o sistema oficial da sua equipe de adoração.
+                                </p>
+                                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #faf5ff; border: 2px dashed #d6bcfa; border-radius: 16px; margin-bottom: 30px;">
+                                    <tr>
+                                        <td style="padding: 20px; text-align: center; color: #553c9a; font-size: 15px; font-weight: 500;">
+                                            Seu cadastro já está aguardando você.<br />
+                                            E-mail: <strong>{{ .Email }}</strong>
+                                        </td>
+                                    </tr>
+                                </table>
+                                <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                    <tr>
+                                        <td align="center">
+                                            <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                                <tr>
+                                                    <td align="center" style="background-color: #aa00ff; border-radius: 14px;">
+                                                        <a href="{{ .ConfirmationURL }}" target="_blank" style="display: inline-block; padding: 16px 40px; font-family: Helvetica, Arial, sans-serif; font-size: 16px; font-weight: 800; color: #ffffff; text-decoration: none; border-radius: 14px; background-color: #aa00ff; width: 100%; text-align: center;">
+                                                            Aceitar Convite e Acessar
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                </table>
+                                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc; border-left: 4px solid #6366f1; border-radius: 8px; margin-top: 30px;">
+                                    <tr>
+                                        <td style="padding: 15px; text-align: left; font-size: 13px; color: #475569; line-height: 1.5;">
+                                            <strong>O que fazer agora?</strong><br />
+                                            Ao clicar no botão, você será levado para criar sua senha pessoal e completar seu perfil (instrumento, telefone, etc).
+                                        </td>
+                                    </tr>
+                                </table>
+                            {{ else }}
+                                <!-- VISÃO PARA CADASTRO INDIVIDUAL COMUM -->
+                                <h1 style="color: #1a202c; font-size: 26px; font-weight: 900; margin: 0 0 15px 0; letter-spacing: -0.5px; line-height: 1.2;">Confirme seu E-mail</h1>
+                                <p style="color: #4a5568; font-size: 16px; margin: 0 0 30px 0; line-height: 1.6;">
+                                    Seja bem-vindo ao <strong>LouvorPlay</strong>! Para começar a usar sua conta individual, precisamos confirmar seu e-mail.
+                                </p>
+                                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #faf5ff; border: 2px dashed #d6bcfa; border-radius: 16px; margin-bottom: 30px;">
+                                    <tr>
+                                        <td style="padding: 20px; text-align: center; color: #553c9a; font-size: 15px; font-weight: 500;">
+                                            Confirmando acesso para:<br />
+                                            <strong>{{ .Email }}</strong>
+                                        </td>
+                                    </tr>
+                                </table>
+                                <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                    <tr>
+                                        <td align="center">
+                                            <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                                <tr>
+                                                    <td align="center" style="background-color: #aa00ff; border-radius: 14px;">
+                                                        <a href="{{ .ConfirmationURL }}" target="_blank" style="display: inline-block; padding: 16px 40px; font-family: Helvetica, Arial, sans-serif; font-size: 16px; font-weight: 800; color: #ffffff; text-decoration: none; border-radius: 14px; background-color: #aa00ff; width: 100%; text-align: center;">
+                                                            Confirmar Minha Conta
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                </table>
+                                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc; border-left: 4px solid #6366f1; border-radius: 8px; margin-top: 30px;">
+                                    <tr>
+                                        <td style="padding: 15px; text-align: left; font-size: 13px; color: #475569; line-height: 1.5;">
+                                            <strong>Próximos passos:</strong><br />
+                                            Após a confirmação, você poderá acessar todos os recursos do seu plano para gerenciar suas cifras e repertórios.
+                                        </td>
+                                    </tr>
+                                </table>
+                            {{ end }}
+
+                            <!-- Footer -->
+                            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top: 35px; border-top: 1px solid #e2e8f0;">
+                                <tr>
+                                    <td align="center" style="padding-top: 25px; color: #a0aec0; font-size: 13px; line-height: 1.5;">
+                                        <p style="margin: 0;">Seja bem-vindo(a) à excelência no louvor! Este link expira em 24h.</p>
+                                    </td>
+                                </tr>
+                            </table>
+
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+
+</html>

@@ -1,0 +1,905 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Protótipo · Editor Inline Visual</title>
+  <style>
+    :root {
+      --bg: #f6f3ee;
+      --paper: #fffdfa;
+      --line: rgba(148, 163, 184, 0.2);
+      --text: #0f172a;
+      --muted: #64748b;
+      --accent: #3b82f6;
+      --accent-soft: rgba(59, 130, 246, 0.08);
+      --chord: #d97706;
+      --danger: #dc2626;
+      --shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
+      --font-ui: Inter, "Segoe UI", Arial, sans-serif;
+      --font-song: Inter, "Segoe UI", Arial, sans-serif;
+      --font-code: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      --song-size: 16px;
+      --song-line-height: 1.15;
+      --chord-size: 15px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font-ui);
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(59, 130, 246, 0.08), transparent 24%),
+        radial-gradient(circle at top right, rgba(217, 119, 6, 0.08), transparent 22%),
+        linear-gradient(180deg, #faf8f5 0%, var(--bg) 100%);
+    }
+
+    .page {
+      max-width: 1460px;
+      margin: 0 auto;
+      padding: 24px;
+      display: grid;
+      gap: 20px;
+    }
+
+    .topbar,
+    .workspace,
+    .panel {
+      background: rgba(255, 253, 250, 0.92);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    .topbar {
+      padding: 20px 22px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 11px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.8rem, 2.6vw, 2.8rem);
+      line-height: 1.02;
+      letter-spacing: -0.04em;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .topbar-meta {
+      max-width: 840px;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 10px 14px;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.14s ease, background 0.14s ease, opacity 0.14s ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+
+    .btn-primary { background: #0f766e; color: #fff; }
+    .btn-secondary { background: var(--accent-soft); color: var(--accent); }
+    .btn-ghost { background: rgba(148, 163, 184, 0.12); color: var(--text); }
+    .btn-warn { background: rgba(217, 119, 6, 0.12); color: #b45309; }
+    .btn-danger { background: rgba(220, 38, 38, 0.1); color: var(--danger); }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 20px;
+      padding: 18px;
+      align-items: start;
+    }
+
+    .sheet {
+      background: linear-gradient(180deg, #fffefa 0%, #fdfaf5 100%);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      border-radius: 20px;
+      padding: 24px 22px 28px;
+      min-height: 720px;
+      overflow: hidden;
+    }
+
+    .sheet-meta {
+      display: grid;
+      gap: 6px;
+      padding-bottom: 16px;
+      margin-bottom: 14px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+    }
+
+    .song-title,
+    .song-subtitle {
+      border: 0;
+      background: transparent;
+      outline: none;
+      width: 100%;
+      padding: 0;
+      margin: 0;
+      font-family: var(--font-song);
+      color: var(--text);
+    }
+
+    .song-title {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .song-subtitle {
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .song-body {
+      display: grid;
+      gap: 2px;
+    }
+
+    .row {
+      border-radius: 10px;
+      padding: 2px 6px;
+      transition: background 0.14s ease, box-shadow 0.14s ease;
+    }
+
+    .row:hover {
+      background: rgba(59, 130, 246, 0.035);
+    }
+
+    .row.selected {
+      background: rgba(59, 130, 246, 0.06);
+      box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.12);
+    }
+
+    .comment-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 22px;
+      margin: 6px 0 2px;
+    }
+
+    .comment-row::before {
+      content: "";
+      width: 2px;
+      align-self: stretch;
+      background: var(--accent);
+      border-radius: 999px;
+    }
+
+    .comment-editor {
+      min-width: 0;
+      flex: 1;
+      outline: none;
+      border: 0;
+      background: transparent;
+      font-family: var(--font-song);
+      font-size: 11px;
+      font-weight: 900;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      line-height: 1.1;
+      white-space: pre-wrap;
+    }
+
+    .blank-row {
+      min-height: 10px;
+    }
+
+    .music-row {
+      position: relative;
+      padding-top: 16px;
+      min-height: 38px;
+    }
+
+    .line-editor {
+      position: relative;
+      z-index: 2;
+      min-height: 20px;
+      outline: none;
+      border: 0;
+      background: transparent;
+      padding: 0;
+      margin: 0;
+      font-family: var(--font-song);
+      font-size: var(--song-size);
+      line-height: var(--song-line-height);
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .line-editor strong,
+    .line-editor b {
+      font-weight: 800;
+    }
+
+    .chord-anchor {
+      display: inline-block;
+      position: relative;
+      width: 0;
+      min-width: 0;
+      overflow: visible;
+      vertical-align: baseline;
+      user-select: none;
+    }
+
+    .chord-anchor::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .chord-overlay {
+      position: absolute;
+      left: 0;
+      top: 0;
+      right: 0;
+      height: 14px;
+      pointer-events: none;
+      z-index: 3;
+    }
+
+    .chord-chip {
+      position: absolute;
+      top: 0;
+      left: 0;
+      transform: translateX(var(--left));
+      color: var(--chord);
+      font-family: var(--font-song);
+      font-size: var(--chord-size);
+      font-weight: 800;
+      line-height: 1;
+      pointer-events: auto;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .line-editor[data-empty="true"]::before {
+      content: "Digite a linha aqui...";
+      color: rgba(100, 116, 139, 0.45);
+      pointer-events: none;
+    }
+
+    .panel {
+      padding: 18px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .panel h2,
+    .panel h3 {
+      margin: 0 0 10px;
+      font-size: 1rem;
+      letter-spacing: -0.02em;
+    }
+
+    .panel ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+    }
+
+    .panel li + li {
+      margin-top: 8px;
+    }
+
+    .debug-area {
+      display: none;
+      gap: 10px;
+    }
+
+    .debug-area.open {
+      display: grid;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 280px;
+      resize: vertical;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.66);
+      color: var(--text);
+      outline: none;
+      padding: 14px 16px;
+      font-family: var(--font-code);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .code-note {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .kbd {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 8px;
+      background: rgba(148, 163, 184, 0.12);
+      font-family: var(--font-code);
+      font-size: 0.84em;
+      color: var(--text);
+    }
+
+    @media (max-width: 1120px) {
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .page { padding: 14px; }
+      .topbar,
+      .workspace,
+      .panel { padding: 14px; }
+      .toolbar button { width: 100%; }
+      .sheet { padding: 18px 14px 22px; min-height: 560px; }
+      :root {
+        --song-size: 15px;
+        --chord-size: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="topbar">
+      <div class="topbar-meta">
+        <div class="eyebrow">Protótipo isolado · lógica inline</div>
+        <h1>Editar o visual final sem abandonar o código atual</h1>
+        <p>
+          Aqui cada linha musical já nasce no formato que o sistema entende por trás:
+          texto com acordes inline. O editor visual só renderiza essa mesma estrutura de forma
+          mais natural, para encaixar com importação externa, serialização e o renderer atual.
+        </p>
+      </div>
+
+      <div class="toolbar">
+        <button class="btn-primary" id="load-sample">Carregar exemplo</button>
+        <button class="btn-secondary" id="add-line">Nova linha</button>
+        <button class="btn-secondary" id="add-tag">Adicionar tag</button>
+        <button class="btn-secondary" id="add-separator">Adicionar separador</button>
+        <button class="btn-warn" id="insert-chord">Inserir acorde</button>
+        <button class="btn-ghost" id="toggle-bold">Bold na seleção</button>
+        <button class="btn-danger" id="delete-row">Excluir linha</button>
+      </div>
+    </section>
+
+    <section class="workspace">
+      <article class="sheet">
+        <div class="sheet-meta">
+          <input id="song-title" class="song-title" value="Grandioso És Tu" />
+          <input id="song-subtitle" class="song-subtitle" value="Protótipo de edição inline visual" />
+        </div>
+
+        <div class="song-body" id="song-body"></div>
+      </article>
+
+      <aside class="panel">
+        <section>
+          <h2>Como pensar esse editor</h2>
+          <ul>
+            <li>A base da linha continua sendo o código inline do sistema.</li>
+            <li>Importação externa entra no pipeline atual, vira código, e este editor lê o código.</li>
+            <li>Ao editar visualmente, o protótipo reserializa para o mesmo formato inline.</li>
+            <li>Os acordes agora são âncoras da própria linha, não uma linha separada.</li>
+          </ul>
+        </section>
+
+        <section>
+          <button class="btn-ghost" id="toggle-debug">Mostrar código gerado</button>
+          <div class="debug-area" id="debug-area">
+            <textarea id="code-output"></textarea>
+            <p class="code-note">
+              Este painel representa o código que precisa encaixar com o sistema atual.
+              Você também pode colar código existente aqui e clicar em “Ler código”.
+            </p>
+            <div class="toolbar" style="padding: 0;">
+              <button class="btn-ghost" id="sync-code">Atualizar código</button>
+              <button class="btn-ghost" id="read-code">Ler código</button>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3>Atalhos importantes</h3>
+          <ul>
+            <li><span class="kbd">Enter</span> em linha musical cria uma nova linha abaixo.</li>
+            <li>Clique sobre um acorde para editar ou remover.</li>
+            <li>Use “Inserir acorde” com o cursor na linha para ancorar o acorde no ponto certo.</li>
+          </ul>
+        </section>
+      </aside>
+    </section>
+  </div>
+
+  <script>
+    const SAMPLE_CODE = `{c: Intro}
+[G]Grandioso es [D/F#]Tu, Senhor [Em]
+
+{c: Acustico}
+*Tu es digno* de [C]louvor [G/B]
+
+{c: Separador}
+
+Para sempre [D]reinarás [Em]`;
+
+    const songBody = document.getElementById('song-body');
+    const codeOutput = document.getElementById('code-output');
+    const debugArea = document.getElementById('debug-area');
+    const songTitle = document.getElementById('song-title');
+    const songSubtitle = document.getElementById('song-subtitle');
+
+    let rows = [];
+    let selectedRowId = null;
+
+    function createId() {
+      return `row_${Math.random().toString(36).slice(2, 10)}`;
+    }
+
+    function escapeHtml(text) {
+      return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function isBlankLine(line) {
+      return line.trim().length === 0;
+    }
+
+    function parseCommentLabel(line) {
+      const trimmed = line.trim();
+      const comment = trimmed.match(/^\{(?:c|comment):\s*(.*?)\}$/i);
+      if (comment) return comment[1];
+      const tag = trimmed.match(/^\{tag:\s*(.*?)\}$/i);
+      if (tag) return tag[1];
+      const bracket = trimmed.match(/^\[(.*?)\]$/);
+      if (bracket && (bracket[1].includes(' ') || bracket[1].length > 3)) return bracket[1];
+      return null;
+    }
+
+    function codeToRows(code) {
+      return code.replace(/\r/g, '').split('\n').map((line) => {
+        if (isBlankLine(line)) {
+          return { id: createId(), type: 'blank' };
+        }
+
+        const label = parseCommentLabel(line);
+        if (label !== null) {
+          return { id: createId(), type: 'comment', text: label };
+        }
+
+        return { id: createId(), type: 'music', code: line };
+      });
+    }
+
+    function rowsToCode() {
+      return rows.map((row) => {
+        if (row.type === 'blank') return '';
+        if (row.type === 'comment') return `{c: ${row.text || 'Tag'}}`;
+        return row.code || '';
+      }).join('\n');
+    }
+
+    function parseInlineTokens(line) {
+      const tokens = [];
+      let buffer = '';
+      let readingChord = false;
+
+      for (let i = 0; i < line.length; i += 1) {
+        const char = line[i];
+
+        if (char === '[' && !readingChord) {
+          if (buffer) tokens.push({ type: 'text', value: buffer });
+          buffer = '';
+          readingChord = true;
+          continue;
+        }
+
+        if (char === ']' && readingChord) {
+          tokens.push({ type: 'chord', value: buffer });
+          buffer = '';
+          readingChord = false;
+          continue;
+        }
+
+        buffer += char;
+      }
+
+      if (buffer) {
+        tokens.push({ type: readingChord ? 'text' : 'text', value: buffer });
+      }
+
+      return tokens;
+    }
+
+    function appendTextWithBold(parent, text) {
+      const parts = text.split('*');
+      let isBold = false;
+
+      parts.forEach((part, index) => {
+        if (!part && index === parts.length - 1) return;
+        if (isBold) {
+          const strong = document.createElement('strong');
+          strong.textContent = part;
+          parent.appendChild(strong);
+        } else if (part) {
+          parent.appendChild(document.createTextNode(part));
+        }
+        isBold = !isBold;
+      });
+    }
+
+    function buildMusicEditor(editor, code) {
+      editor.innerHTML = '';
+      const tokens = parseInlineTokens(code);
+
+      if (!tokens.length) {
+        editor.dataset.empty = 'true';
+        return;
+      }
+
+      editor.dataset.empty = 'false';
+
+      tokens.forEach((token) => {
+        if (token.type === 'text') {
+          appendTextWithBold(editor, token.value);
+        } else if (token.type === 'chord') {
+          const anchor = document.createElement('span');
+          anchor.className = 'chord-anchor';
+          anchor.contentEditable = 'false';
+          anchor.dataset.chord = token.value;
+          anchor.appendChild(document.createTextNode('\u200b'));
+          editor.appendChild(anchor);
+        }
+      });
+    }
+
+    function serializeNode(node) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        return node.textContent || '';
+      }
+
+      if (node.nodeType !== Node.ELEMENT_NODE) {
+        return '';
+      }
+
+      if (node.classList.contains('chord-anchor')) {
+        return `[${node.dataset.chord || ''}]`;
+      }
+
+      if (node.tagName === 'BR') {
+        return '';
+      }
+
+      const content = Array.from(node.childNodes).map(serializeNode).join('');
+      if (node.tagName === 'STRONG' || node.tagName === 'B') {
+        return `*${content}*`;
+      }
+      return content;
+    }
+
+    function serializeMusicEditor(editor) {
+      return Array.from(editor.childNodes).map(serializeNode).join('').replace(/\u200b/g, '');
+    }
+
+    function layoutChords(rowElement) {
+      const editor = rowElement.querySelector('.line-editor');
+      const overlay = rowElement.querySelector('.chord-overlay');
+      if (!editor || !overlay) return;
+
+      overlay.innerHTML = '';
+
+      const editorRect = editor.getBoundingClientRect();
+      const anchors = editor.querySelectorAll('.chord-anchor');
+      anchors.forEach((anchor, index) => {
+        const rect = anchor.getBoundingClientRect();
+        const chip = document.createElement('span');
+        chip.className = 'chord-chip';
+        chip.style.setProperty('--left', `${rect.left - editorRect.left}px`);
+        chip.textContent = anchor.dataset.chord || '';
+        chip.dataset.anchorIndex = String(index);
+        chip.title = 'Clique para editar o acorde';
+        chip.addEventListener('click', (event) => {
+          event.stopPropagation();
+          editChord(anchor, rowElement.dataset.rowId);
+        });
+        overlay.appendChild(chip);
+      });
+
+      editor.dataset.empty = anchors.length === 0 && editor.innerText.trim().length === 0 ? 'true' : 'false';
+    }
+
+    function layoutAllChords() {
+      document.querySelectorAll('.row[data-type="music"]').forEach(layoutChords);
+    }
+
+    function updateSelectedStyles() {
+      document.querySelectorAll('.row').forEach((rowEl) => {
+        rowEl.classList.toggle('selected', rowEl.dataset.rowId === selectedRowId);
+      });
+    }
+
+    function selectRow(rowId) {
+      selectedRowId = rowId;
+      updateSelectedStyles();
+    }
+
+    function syncCodeView() {
+      codeOutput.value = rowsToCode();
+      layoutAllChords();
+    }
+
+    function renderRows() {
+      songBody.innerHTML = '';
+
+      rows.forEach((row) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'row';
+        wrapper.dataset.rowId = row.id;
+        wrapper.dataset.type = row.type;
+        wrapper.addEventListener('click', () => selectRow(row.id));
+
+        if (row.type === 'blank') {
+          wrapper.innerHTML = '<div class="blank-row"></div>';
+        } else if (row.type === 'comment') {
+          wrapper.innerHTML = `
+            <div class="comment-row">
+              <div class="comment-editor" contenteditable="true" spellcheck="false" data-role="comment"></div>
+            </div>
+          `;
+          const editor = wrapper.querySelector('[data-role="comment"]');
+          editor.textContent = row.text || '';
+          editor.addEventListener('focus', () => selectRow(row.id));
+          editor.addEventListener('input', () => {
+            row.text = editor.innerText.trim();
+            syncCodeView();
+          });
+          editor.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              addMusicRowAfter(row.id);
+            }
+          });
+        } else {
+          wrapper.innerHTML = `
+            <div class="music-row">
+              <div class="chord-overlay"></div>
+              <div class="line-editor" contenteditable="true" spellcheck="false" data-role="music"></div>
+            </div>
+          `;
+
+          const editor = wrapper.querySelector('[data-role="music"]');
+          buildMusicEditor(editor, row.code || '');
+
+          editor.addEventListener('focus', () => selectRow(row.id));
+          editor.addEventListener('input', () => {
+            row.code = serializeMusicEditor(editor);
+            syncCodeView();
+          });
+          editor.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              row.code = serializeMusicEditor(editor);
+              addMusicRowAfter(row.id);
+            }
+          });
+        }
+
+        songBody.appendChild(wrapper);
+      });
+
+      updateSelectedStyles();
+      syncCodeView();
+    }
+
+    function getRowIndex(rowId) {
+      return rows.findIndex((row) => row.id === rowId);
+    }
+
+    function restoreFocus(rowId, role = 'music', placeAtEnd = true) {
+      requestAnimationFrame(() => {
+        const target = document.querySelector(`.row[data-row-id="${rowId}"] [data-role="${role}"]`);
+        if (!target) return;
+        target.focus();
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(target);
+        range.collapse(placeAtEnd);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      });
+    }
+
+    function addMusicRowAfter(rowId) {
+      const index = rowId ? getRowIndex(rowId) : rows.length - 1;
+      const newRow = { id: createId(), type: 'music', code: '' };
+      if (index >= 0) rows.splice(index + 1, 0, newRow);
+      else rows.push(newRow);
+      selectedRowId = newRow.id;
+      renderRows();
+      restoreFocus(newRow.id);
+    }
+
+    function addCommentRowAfter(rowId, text) {
+      const index = rowId ? getRowIndex(rowId) : rows.length - 1;
+      const newRow = { id: createId(), type: 'comment', text };
+      if (index >= 0) rows.splice(index + 1, 0, newRow);
+      else rows.push(newRow);
+      selectedRowId = newRow.id;
+      renderRows();
+      restoreFocus(newRow.id, 'comment');
+    }
+
+    function deleteSelectedRow() {
+      if (!selectedRowId) return;
+      const index = getRowIndex(selectedRowId);
+      if (index < 0) return;
+      rows.splice(index, 1);
+      selectedRowId = rows[Math.max(0, index - 1)]?.id || rows[0]?.id || null;
+      renderRows();
+    }
+
+    function getSelectedMusicEditor() {
+      const rowEl = document.querySelector(`.row[data-row-id="${selectedRowId}"]`);
+      if (!rowEl || rowEl.dataset.type !== 'music') return null;
+      return rowEl.querySelector('[data-role="music"]');
+    }
+
+    function insertChordAtSelection() {
+      const editor = getSelectedMusicEditor();
+      if (!editor) return;
+
+      const chord = window.prompt('Digite o acorde. Ex: G, D/F#, Em7');
+      if (!chord) return;
+
+      editor.focus();
+      const selection = window.getSelection();
+      if (!selection.rangeCount) return;
+
+      let range = selection.getRangeAt(0);
+      if (!editor.contains(range.startContainer)) {
+        range = document.createRange();
+        range.selectNodeContents(editor);
+        range.collapse(false);
+      }
+
+      const anchor = document.createElement('span');
+      anchor.className = 'chord-anchor';
+      anchor.contentEditable = 'false';
+      anchor.dataset.chord = chord.trim();
+      anchor.appendChild(document.createTextNode('\u200b'));
+
+      range.insertNode(anchor);
+      range.setStartAfter(anchor);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+
+      const row = rows.find((item) => item.id === selectedRowId);
+      row.code = serializeMusicEditor(editor);
+      syncCodeView();
+    }
+
+    function editChord(anchor, rowId) {
+      const current = anchor.dataset.chord || '';
+      const next = window.prompt('Editar acorde. Deixe vazio para remover.', current);
+      if (next === null) return;
+
+      if (next.trim() === '') {
+        anchor.remove();
+      } else {
+        anchor.dataset.chord = next.trim();
+      }
+
+      const rowEl = document.querySelector(`.row[data-row-id="${rowId}"]`);
+      const editor = rowEl?.querySelector('[data-role="music"]');
+      const row = rows.find((item) => item.id === rowId);
+      if (!editor || !row) return;
+
+      row.code = serializeMusicEditor(editor);
+      syncCodeView();
+    }
+
+    function toggleBoldSelection() {
+      const editor = getSelectedMusicEditor();
+      if (!editor) return;
+
+      const selection = window.getSelection();
+      if (!selection.rangeCount || selection.isCollapsed) return;
+      if (!editor.contains(selection.anchorNode)) return;
+
+      document.execCommand('bold');
+
+      const row = rows.find((item) => item.id === selectedRowId);
+      if (!row) return;
+      row.code = serializeMusicEditor(editor);
+      syncCodeView();
+    }
+
+    function loadSample() {
+      rows = codeToRows(SAMPLE_CODE);
+      selectedRowId = rows.find((row) => row.type === 'music')?.id || rows[0]?.id || null;
+      renderRows();
+    }
+
+    document.getElementById('load-sample').addEventListener('click', loadSample);
+    document.getElementById('add-line').addEventListener('click', () => addMusicRowAfter(selectedRowId));
+    document.getElementById('add-tag').addEventListener('click', () => {
+      const label = window.prompt('Digite a tag. Ex: Intro, Coro, Ponte, Acustico');
+      if (!label) return;
+      addCommentRowAfter(selectedRowId, label.trim());
+    });
+    document.getElementById('add-separator').addEventListener('click', () => {
+      addCommentRowAfter(selectedRowId, 'Separador');
+    });
+    document.getElementById('insert-chord').addEventListener('click', insertChordAtSelection);
+    document.getElementById('toggle-bold').addEventListener('click', toggleBoldSelection);
+    document.getElementById('delete-row').addEventListener('click', deleteSelectedRow);
+
+    document.getElementById('toggle-debug').addEventListener('click', () => {
+      debugArea.classList.toggle('open');
+    });
+
+    document.getElementById('sync-code').addEventListener('click', syncCodeView);
+    document.getElementById('read-code').addEventListener('click', () => {
+      rows = codeToRows(codeOutput.value);
+      selectedRowId = rows.find((row) => row.type === 'music')?.id || rows[0]?.id || null;
+      renderRows();
+    });
+
+    songTitle.addEventListener('input', syncCodeView);
+    songSubtitle.addEventListener('input', syncCodeView);
+    window.addEventListener('resize', layoutAllChords);
+
+    loadSample();
+  </script>
+</body>
+</html>

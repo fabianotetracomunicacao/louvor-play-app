@@ -1,0 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 80px;
+}
+
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  /* Remove hardcoded dark theme defaults */
+  /* color-scheme is handled by tailwind dark mode mostly, but we can leave it or remove it */
+  color-scheme: light dark;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Default to light, override in dark class */
+body {
+  margin: 0;
+  min-height: 100vh;
+  @apply bg-slate-100 text-slate-900 dark:bg-slate-900 dark:text-slate-100;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  /* iOS Momentum Scrolling */
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Ensure all scrollable containers have momentum scrolling */
+.overflow-y-auto,
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Custom Extensions */
+.chord-tag {
+  color: #facc15;
+  font-weight: bold;
+  user-select: all;
+  transition: opacity 0.2s;
+}
+
+.mode-lyrics-only .chord-tag {
+  display: none;
+  /* optional: visibility: hidden if we want to keep spacing, but usually lyrics sheets collapse */
+}
+
+/* iOS Safe Area Insets - Enhanced for PWA Support */
+:root {
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
+  --safe-area-inset-right: env(safe-area-inset-right, 0px);
+}
+
+/* Header safe area */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+/* Footer safe area - includes both padding and the inset */
+.safe-area-bottom {
+  padding-bottom: calc(env(safe-area-inset-bottom) + 0.75rem);
+}
+
+/* For fixed elements that need to respect safe areas */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+/* Bottom positioning that respects safe area */
+.bottom-safe {
+  bottom: env(safe-area-inset-bottom);
+}
+
+/* Mobile chat overlay positioning - accounts for nav bar + safe area */
+.bottom-nav-safe {
+  bottom: calc(4.5rem + env(safe-area-inset-bottom));
+}
+
+/* Projector display slide animation */
+@keyframes fadeInFast {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.animate-fade-in-fast {
+  animation: fadeInFast 0.3s ease-in-out forwards;
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 12s linear infinite;
+}
+
+.animate-marquee-slow {
+  display: flex;
+  width: max-content;
+  animation: marquee 20s linear infinite;
+}
+
+.animate-marquee-slower {
+  display: flex;
+  width: max-content;
+  animation: marquee 30s linear infinite;
+}

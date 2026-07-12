@@ -1,0 +1,85 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="pt-BR">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Confirme seu Email - LouvorPlay</title>
+</head>
+
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #667eea; background-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="min-height: 100vh;">
+        <tr>
+            <td align="center" style="padding: 40px 20px;">
+                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 500px; background-color: #ffffff; border-radius: 20px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);">
+                    <tr>
+                        <td align="center" style="padding: 40px;">
+                            <!-- Header Logo Icon -->
+                            <table border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 30px;">
+                                <tr>
+                                    <td align="center" style="width: 80px; height: 80px; background-color: #667eea; border-radius: 20px;">
+                                        <img src="https://louvorplay.com.br/logo.png" alt="LouvorPlay Logo" width="60" style="display: block; border: 0;" />
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <h1 style="color: #1a202c; font-size: 28px; font-weight: 700; margin: 0 0 15px 0; line-height: 1.2;">Confirme seu Email</h1>
+                            <p style="color: #718096; font-size: 16px; margin: 0 0 30px 0; line-height: 1.6;">
+                                Obrigado por se cadastrar no LouvorPlay! Para começar a usar a plataforma, precisamos confirmar seu endereço de email.
+                            </p>
+
+                            <!-- Email Display -->
+                            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f7fafc; border: 2px solid #e2e8f0; border-radius: 12px; margin-bottom: 30px;">
+                                <tr>
+                                    <td style="padding: 15px; text-align: center; color: #2d3748; font-size: 16px; font-weight: 500; word-break: break-all;">
+                                        {{ .Email }}
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Bulletproof Button -->
+                            <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                <tr>
+                                    <td align="center">
+                                        <table border="0" cellpadding="0" cellspacing="0">
+                                            <tr>
+                                                <td align="center" style="background-color: #667eea; border-radius: 12px;">
+                                                    <a href="{{ .ConfirmationURL }}" target="_blank" style="display: inline-block; padding: 16px 40px; font-family: Helvetica, Arial, sans-serif; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 12px; background-color: #667eea;">
+                                                        Confirmar Email
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Security Note -->
+                            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #fff5f5; border-left: 4px solid #fc8181; border-radius: 8px; margin-top: 20px;">
+                                <tr>
+                                    <td style="padding: 15px; text-align: left; font-size: 13px; color: #742a2a; line-height: 1.5;">
+                                        <strong style="display: block; margin-bottom: 5px;">⚠️ Nota de Segurança</strong>
+                                        Se você não criou uma conta no LouvorPlay, ignore este email. Seu endereço não será usado sem sua confirmação.
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Footer -->
+                            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top: 30px; border-top: 1px solid #e2e8f0;">
+                                <tr>
+                                    <td style="padding-top: 30px; color: #a0aec0; font-size: 14px; text-align: center; line-height: 1.5;">
+                                        <p style="margin: 0 0 10px 0;">Este link expira em 24 horas.</p>
+                                        <p style="margin: 0;">Precisa de ajuda? <a href="mailto:suporte@louvorplay.com.br" style="color: #667eea; text-decoration: none; font-weight: 500;">Entre em contato</a></p>
+                                    </td>
+                                </tr>
+                            </table>
+
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+
+</html>

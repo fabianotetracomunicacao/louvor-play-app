@@ -1,0 +1,24 @@
+=============================================================================
+BACKUP FINAL - LOUVORPLAY (2025-12-22)
+=============================================================================
+
+Este backup contém o estado atual do banco de dados e as instruções para restaurar.
+
+1. ESTRUTURA DO BANCO DE DADOS (Schema)
+   - setup_clean_project.sql  -> Cria tabelas, políticas de segurança e metadados.
+   - restore_all_admin_funcs.sql -> Cria as funções administrativas (Delete, Senha).
+
+2. DADOS (JSON)
+   - backup_songs_data.json   -> Todas as músicas cadastradas.
+   - backup_playlists_data.json -> Playlists públicas/privadas.
+   - backup_playlist_items_data.json -> Itens das playlists.
+
+3. COMO RESTAURAR (Se precisar começar do zero)
+   a. Crie um novo projeto no Supabase.
+   b. Rode o script `setup_clean_project.sql`.
+   c. Rode o script `restore_all_admin_funcs.sql`.
+   d. Cadastre seu usuário Admin manualmente pelo site.
+   e. Use o script `promote_admin.sql` para virar Admin.
+   f. Use o script `convert_backup_to_sql.js` para gerar um SQL de restauração dos dados JSON.
+
+=============================================================================

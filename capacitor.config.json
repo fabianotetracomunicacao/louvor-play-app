@@ -1,0 +1,10 @@
+{
+  "appId": "com.tetracom.cifras",
+  "appName": "LouvorPlay",
+  "webDir": "dist",
+  "plugins": {
+    "StatusBar": {
+      "hidden": true
+    }
+  }
+}

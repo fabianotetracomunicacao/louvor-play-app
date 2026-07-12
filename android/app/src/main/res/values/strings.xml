@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">LouvorPlay</string>
+    <string name="title_activity_main">LouvorPlay</string>
+    <string name="package_name">com.tetracom.cifras</string>
+    <string name="custom_url_scheme">com.tetracom.cifras</string>
+</resources>

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirme seu Email - LouvorPlay</title>
+</head>
+
+<body
+    style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f7fafc;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f7fafc; padding: 40px 20px;">
+        <tr>
+            <td align="center">
+                <table width="600" cellpadding="0" cellspacing="0"
+                    style="background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); overflow: hidden;">
+                    <!-- Header com gradiente -->
+                    <tr>
+                        <td
+                            style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center;">
+                            <div
+                                style="width: 60px; height: 60px; background-color: rgba(255, 255, 255, 0.2); border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 20px;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="35" height="35" viewBox="0 0 24 24"
+                                    fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path d="M9 18V5l12-2v13"></path>
+                                    <circle cx="6" cy="18" r="3"></circle>
+                                    <circle cx="18" cy="16" r="3"></circle>
+                                </svg>
+                            </div>
+                            <h1 style="color: #ffffff; font-size: 28px; font-weight: 700; margin: 0;">LouvorPlay</h1>
+                        </td>
+                    </tr>
+
+                    <!-- Conteúdo -->
+                    <tr>
+                        <td style="padding: 40px 30px;">
+                            <h2 style="color: #1a202c; font-size: 24px; font-weight: 600; margin: 0 0 20px 0;">Bem-vindo
+                                ao LouvorPlay! 🎵</h2>
+
+                            <p style="color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+                                Olá! Estamos felizes em ter você conosco.
+                            </p>
+
+                            <p style="color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 30px 0;">
+                                Para começar a usar a plataforma e acessar todo o repertório de músicas, clique no botão
+                                abaixo para confirmar seu endereço de email:
+                            </p>
+
+                            <!-- Botão de confirmação -->
+                            <table width="100%" cellpadding="0" cellspacing="0">
+                                <tr>
+                                    <td align="center" style="padding: 20px 0;">
+                                        <a href="{{ .ConfirmationURL }}"
+                                            style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-size: 16px; font-weight: 600; display: inline-block; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
+                                            Confirmar Email
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Link alternativo -->
+                            <p
+                                style="color: #718096; font-size: 14px; line-height: 1.6; margin: 30px 0 0 0; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+                                Se o botão não funcionar, copie e cole este link no seu navegador:
+                            </p>
+                            <p style="color: #667eea; font-size: 13px; word-break: break-all; margin: 10px 0 0 0;">
+                                {{ .ConfirmationURL }}
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Nota de segurança -->
+                    <tr>
+                        <td style="padding: 0 30px 30px 30px;">
+                            <div
+                                style="background-color: #fff5f5; border-left: 4px solid #fc8181; padding: 15px; border-radius: 4px;">
+                                <p style="color: #742a2a; font-size: 13px; margin: 0; line-height: 1.5;">
+                                    <strong>⚠️ Nota de Segurança:</strong><br>
+                                    Se você não criou uma conta no LouvorPlay, ignore este email. Nenhuma ação será
+                                    tomada sem sua confirmação.
+                                </p>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td
+                            style="background-color: #f7fafc; padding: 30px; text-align: center; border-top: 1px solid #e2e8f0;">
+                            <p style="color: #a0aec0; font-size: 13px; margin: 0 0 10px 0;">
+                                Este link expira em 24 horas.
+                            </p>
+                            <p style="color: #a0aec0; font-size: 13px; margin: 0;">
+                                Precisa de ajuda? <a href="mailto:suporte@louvorplay.com.br"
+                                    style="color: #667eea; text-decoration: none;">Entre em contato</a>
+                            </p>
+                            <p style="color: #cbd5e0; font-size: 12px; margin: 20px 0 0 0;">
+                                © 2025 LouvorPlay. Todos os direitos reservados.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+
+</html>

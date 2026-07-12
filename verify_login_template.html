@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnóstico de Login Supabase</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .log {
+            background: #f0f0f0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            font-family: monospace;
+            height: 300px;
+            overflow-y: scroll;
+            white-space: pre-wrap;
+        }
+
+        .error {
+            color: red;
+        }
+
+        .success {
+            color: green;
+        }
+
+        input {
+            padding: 8px;
+            margin: 5px 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        button {
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Diagnóstico Frontend (Supabase)</h1>
+    <p>Este teste simula exatamente o que o App faz, mas mostra os erros na tela.</p>
+
+    <div>
+        <label>Email:</label>
+        <input type="text" id="email" value="testeterceiro@hotmail.com">
+        <label>Senha:</label>
+        <input type="text" id="password" value="123456">
+    </div>
+    <button onclick="runTest()">Testar Login e Acesso</button>
+
+    <h3>Log:</h3>
+    <div id="log" class="log"></div>
+
+    <script>
+        // CONFIGURAÇÃO (PREENCHA AQUI COM SEUS DADOS OBTIDOS DO ARQUIVO .ENV OU DO SUPABASE)
+        const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co'; // SUBSTITUA PELO URL REAL
+        const SUPABASE_KEY = 'YOUR_ANON_KEY'; // SUBSTITUA PELA ANON KEY REAL
+
+        // Tenta pegar do localStorage se o usuário rodou isso via localhost e o app já salvou algo?
+        // Não, melhor hardcoded ou pedir pro usuário colar.
+        // VOU USAR PLACEHOLDERS E PEDIR PRO USUÁRIO SUBSTITUIR SE PRECISAR,
+        // MAS IDEALMENTE EU DEVERIA LER DO ARQUIVO .ENV SE PUDESSE.
+        // Como não posso ler .env via browser direto, vou injetar os valores se eu soubesse.
+        // VOU TENTAR LER DO ARQUIVO .ENV AGORA MESMO E INJETAR NO ARQUIVO.
+    </script>
+</body>
+
+</html>

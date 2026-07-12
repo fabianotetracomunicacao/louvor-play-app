@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnóstico de Login Supabase (Tetracom)</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            background: #f9f9f9;
+        }
+
+        h1,
+        h2 {
+            color: #333;
+        }
+
+        .log {
+            background: #1e1e1e;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: consolas, monospace;
+            height: 400px;
+            overflow-y: scroll;
+            white-space: pre-wrap;
+            font-size: 14px;
+        }
+
+        .error {
+            color: #ff6b6b;
+            font-weight: bold;
+        }
+
+        .success {
+            color: #51cf66;
+            font-weight: bold;
+        }
+
+        .info {
+            color: #ffd43b;
+        }
+
+        .section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        input {
+            padding: 10px;
+            margin: 5px 0;
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background: #6200ea;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #3700b3;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🕵️ Diagnóstico Frontend Tetracom</h1>
+
+    <div class="section">
+        <h2>1. Credenciais</h2>
+        <p>Preenchidas automaticamente do seu ambiente local.</p>
+        <div style="font-size: 12px; color: #666; word-break: break-all;">
+            <strong>URL:</strong> https://rhnagktwbetimnynorch.supabase.co<br>
+            <strong>Key:</strong>
+            eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJobmFna3R3YmV0aW1ueW5vcmNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4MDg0MTIsImV4cCI6MjA4MTM4NDQxMn0.S26oy3BJvfRAciqLKTAEoXQXslR0iXQgbR8gtfo_WkA
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>2. Teste de Login</h2>
+        <label>Email:</label>
+        <input type="text" id="email" value="testeterceiro@hotmail.com">
+        <label>Senha:</label>
+        <input type="text" id="password" value="123456">
+        <button onclick="runTest()">▶️ Executar Diagnóstico</button>
+    </div>
+
+    <h3>📜 Log de Execução:</h3>
+    <div id="log" class="log">Aguardando início...</div>
+
+    <script>
+        // CONFIGURAÇÃO INJETADA DO .ENV
+        const SUPABASE_URL = 'https://rhnagktwbetimnynorch.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJobmFna3R3YmV0aW1ueW5vcmNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4MDg0MTIsImV4cCI6MjA4MTM4NDQxMn0.S26oy3BJvfRAciqLKTAEoXQXslR0iXQgbR8gtfo_WkA';
+
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        function log(msg, type = 'normal') {
+            const logDiv = document.getElementById('log');
+            const span = document.createElement('div');
+            span.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            if (type === 'error') span.className = 'error';
+            if (type === 'success') span.className = 'success';
+            if (type === 'info') span.className = 'info';
+            logDiv.appendChild(span);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(msg);
+        }
+
+        async function runTest() {
+            document.getElementById('log').innerHTML = '';
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            log('🚀 Iniciando diagnóstico...', 'info');
+
+            // 1. TENTATIVA DE LOGIN
+            log('Tentando login com: ' + email + '...');
+            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                email,
+                password
+            });
+
+            if (authError) {
+                log('❌ FALHA NO LOGIN: ' + authError.message, 'error');
+                log('Detalhes: ' + JSON.stringify(authError, null, 2));
+                return;
+            }
+
+            log('✅ Login realizado com sucesso!', 'success');
+            log('User ID: ' + authData.user.id);
+            log('Role (Auth): ' + authData.user.role);
+
+            // 2. BUSCAR PERFIL
+            log('🔍 Buscando perfil em public.profiles...');
+            const { data: profileData, error: profileError } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', authData.user.id)
+                .single();
+
+            if (profileError) {
+                log('❌ ERRO AO LER PERFIL: ' + profileError.message, 'error');
+                log('Isso explica a tela branca se o app depende disso.', 'info');
+            } else {
+                log('✅ Perfil encontrado!', 'success');
+                log('Nome: ' + profileData.name);
+                log('Role (App): ' + profileData.role);
+            }
+
+            // 3. BUSCAR MÚSICAS (Teste Crítico para Músicos)
+            log('🎵 Testando acesso às músicas (getSongs)...');
+            // Simulando a query exata do storage.js
+            const { data: songsData, error: songsError } = await supabase
+                .from('songs')
+                .select('*, creator:created_by(email, name)')
+                .limit(5); // Pega só 5 pra não poluir
+
+            if (songsError) {
+                log('❌ ERRO AO BUSCAR MÚSICAS: ' + songsError.message, 'error');
+                log('DICA: Verifique se created_by aponta para auth.users (proibido) ou public.profiles.', 'info');
+            } else {
+                log('✅ Músicas carregadas: ' + songsData.length + ' itens.', 'success');
+                if (songsData.length > 0) {
+                    log('Exemplo de música: ' + songsData[0].title);
+                    log('Criador: ' + JSON.stringify(songsData[0].creator));
+                }
+            }
+
+            // 4. VERIFICAR SE CAUSA CRASH NO MAP
+            log('🧪 Testando mapSongFromDb (Simulação)...');
+            try {
+                const mapped = songsData.map(song => {
+                    // Lógica simulada do mapSongFromDb
+                    return {
+                        id: song.id,
+                        title: song.title,
+                        creatorName: song.creator?.name || 'Desconhecido', // Onde pode quebrar
+                        creatorEmail: song.creator?.email
+                    };
+                });
+                log('✅ Mapeamento concluído sem crash.', 'success');
+                log('Diagnóstico finalizado. Se tudo aqui deu verde, o erro está no código React (Routes/Context).', 'info');
+            } catch (err) {
+                log('❌ CRASH NO MAPEAMENTO: ' + err.message, 'error');
+            }
+        }
+    </script>
+</body>
+
+</html>

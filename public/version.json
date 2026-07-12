@@ -1,0 +1,5 @@
+{
+  "version": "1.3.28",
+  "timestamp": 1774359126783,
+  "notes": "Fix: mobile remote auto-scroll to top (or active slide) on song change."
+}

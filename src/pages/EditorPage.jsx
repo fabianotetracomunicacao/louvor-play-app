@@ -17,6 +17,7 @@ import { transposeSong, getTransposedNote, detectKeyFromContent } from '../utils
 import { ChordProRenderer } from '../components/ChordRenderer';
 import { extractSlides } from '../utils/lyricsParser';
 import { parseImporter, exportToVisual, isChordLine, isTabLine } from '../utils/importer';
+import { supabase } from '../supabaseClient';
 
 export function EditorPage() {
     const { isEditor, user } = useAuth();
@@ -1459,36 +1460,32 @@ function SongMetadataModal({ initialData, onSave, onCancel }) {
                                                 const file = e.target.files[0];
                                                 if (!file) return;
 
-                                                const uploadUrl = import.meta.env.VITE_UPLOAD_URL;
-                                                if (!uploadUrl) {
-                                                    alert("Para enviar arquivos, configure VITE_UPLOAD_URL no .env");
-                                                    return;
-                                                }
-
                                                 setIsUploading(true); // Start loading
 
-                                                const formData = new FormData();
-                                                formData.append('file', file);
-
                                                 try {
-                                                    const res = await fetch(uploadUrl, { method: 'POST', body: formData });
-                                                    // Handle text/html response if script fails badly
-                                                    const text = await res.text();
-                                                    let data;
-                                                    try {
-                                                        data = JSON.parse(text);
-                                                    } catch (parseErr) {
-                                                        throw new Error('Resposta inválida do servidor: ' + text.substring(0, 100));
+                                                    // Sanitize file name and create a unique path
+                                                    const fileExt = file.name.split('.').pop();
+                                                    const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+                                                    const filePath = `backgrounds/${fileName}`;
+
+                                                    // Upload to Supabase 'media' bucket
+                                                    const { error: uploadError, data: uploadData } = await supabase.storage
+                                                        .from('media')
+                                                        .upload(filePath, file, { upsert: false });
+
+                                                    if (uploadError) {
+                                                        throw uploadError;
                                                     }
 
-                                                    if (data.success) {
-                                                        setYoutubeLinks([...youtubeLinks, { title: file.name, url: data.url, type: 'file' }]);
-                                                    } else {
-                                                        alert('Erro no upload: ' + (data.error || 'Desconhecido'));
-                                                    }
+                                                    // Get public URL
+                                                    const { data: { publicUrl } } = supabase.storage
+                                                        .from('media')
+                                                        .getPublicUrl(filePath);
+
+                                                    setYoutubeLinks([...youtubeLinks, { title: file.name, url: publicUrl, type: 'file' }]);
                                                 } catch (err) {
-                                                    console.error(err);
-                                                    alert("Erro de conexão ao enviar arquivo: " + err.message);
+                                                    console.error("Erro no upload para Supabase:", err);
+                                                    alert("Erro ao enviar arquivo: " + err.message);
                                                 } finally {
                                                     setIsUploading(false); // Stop loading enable button
                                                     e.target.value = ''; // Reset input

@@ -55,15 +55,24 @@ export default function VideoBackgroundModal({ isOpen, onClose, onSelect, curren
             const formData = new FormData();
             formData.append('file', file);
 
-            // Calls the Hostinger backend
-            const response = await fetch('https://louvorplay.com.br/api/upload.php', {
-                method: 'POST',
-                body: formData
-            });
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+            const filePath = `backgrounds/${fileName}`;
 
-            const data = await response.json();
+            const { error: uploadError } = await supabase.storage
+                .from('media')
+                .upload(filePath, file, { upsert: false });
 
-            if (response.ok && data.success) {
+            if (uploadError) {
+                throw uploadError;
+            }
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('media')
+                .getPublicUrl(filePath);
+
+            if (publicUrl) {
+                const data = { url: publicUrl };
                 if (isSystem) {
                     const { data: newMedia, error } = await supabase
                         .from('system_media')
@@ -80,7 +89,7 @@ export default function VideoBackgroundModal({ isOpen, onClose, onSelect, curren
                     saveUserGlobalPrefs({ uploaded_videos: newArray });
                 }
             } else {
-                alert(data.error || "Erro no upload.");
+                alert("Erro no upload.");
             }
         } catch (error) {
             console.error("Upload failed", error);

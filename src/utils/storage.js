@@ -2807,17 +2807,26 @@ export async function getSystemMedia(type) {
  * Helper to delete a file from the Hostinger server.
  */
 async function deleteFileFromServer(url) {
-    if (!url || !url.includes('/uploads/')) return;
+    if (!url) return;
     try {
-        const filename = url.split('/').pop();
-        const formData = new FormData();
-        formData.append('action', 'delete');
-        formData.append('filename', filename);
+        if (url.includes('supabase.co/storage/v1/object/public/media/')) {
+            const urlParts = url.split('/media/');
+            if (urlParts.length > 1) {
+                const filePath = urlParts[1];
+                const { error } = await supabase.storage.from('media').remove([filePath]);
+                if (error) console.error("Error deleting from supabase:", error);
+            }
+        } else if (url.includes('/uploads/')) {
+            const filename = url.split('/').pop();
+            const formData = new FormData();
+            formData.append('action', 'delete');
+            formData.append('filename', filename);
 
-        await fetch('https://louvorplay.com.br/api/upload.php', {
-            method: 'POST',
-            body: formData
-        });
+            await fetch('https://louvorplay.com.br/api/upload.php', {
+                method: 'POST',
+                body: formData
+            }).catch(() => {});
+        }
     } catch (err) {
         console.error("Failed to delete file from server:", err);
     }

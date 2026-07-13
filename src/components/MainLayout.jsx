@@ -494,6 +494,9 @@ export function MainLayout() {
                                             <p className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-none">
                                                 {(userProfile.full_name || userProfile.name || '').split(' ')[0]}
                                             </p>
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase mt-0.5 leading-none">
+                                                {isSuperAdmin ? 'Super Admin' : isChurchAdmin ? 'Admin' : churchRole === 'WORSHIP_LEADER' ? 'Líder' : 'Membro'}
+                                            </p>
                                         </div>
                                         <div className="w-9 h-9 rounded-full bg-purple-600 p-0.5 shadow-lg shadow-purple-600/20">
                                             {userProfile.avatar_url ? (

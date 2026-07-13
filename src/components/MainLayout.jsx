@@ -13,7 +13,7 @@ import { useNotification } from '../contexts/NotificationContext';
 
 export function MainLayout() {
     const {
-        user, userProfile, logout, isSuperAdmin, isChurchAdmin,
+        user, userProfile, logout, isSuperAdmin, isChurchAdmin, isWorshipLeader,
         churchRole, activeChurch, memberships, changeActiveChurch
     } = useAuth();
     const { showToast } = useNotification();
@@ -477,8 +477,8 @@ export function MainLayout() {
                                     </div>
                                     <span className="text-[10px] font-bold text-slate-300 dark:text-slate-600 uppercase">
                                         {isSuperAdmin ? 'Super Admin' :
-                                            churchRole === 'CHURCH_ADMIN' ? 'Responsável' :
-                                                churchRole === 'WORSHIP_LEADER' ? 'Líder de Adoração' :
+                                            isChurchAdmin ? 'Responsável' :
+                                                isWorshipLeader ? 'Líder de Adoração' :
                                                     'Adorador'}
                                     </span>
                                 </div>
@@ -495,7 +495,7 @@ export function MainLayout() {
                                                 {(userProfile.full_name || userProfile.name || '').split(' ')[0]}
                                             </p>
                                             <p className="text-[10px] font-bold text-slate-400 uppercase mt-0.5 leading-none">
-                                                {isSuperAdmin ? 'Super Admin' : isChurchAdmin ? 'Admin' : churchRole === 'WORSHIP_LEADER' ? 'Líder' : 'Membro'}
+                                                {isSuperAdmin ? 'Super Admin' : isChurchAdmin ? 'Admin' : isWorshipLeader ? 'Líder de Adoração' : 'Membro'}
                                             </p>
                                         </div>
                                         <div className="w-9 h-9 rounded-full bg-purple-600 p-0.5 shadow-lg shadow-purple-600/20">

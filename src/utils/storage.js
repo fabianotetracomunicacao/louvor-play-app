@@ -1713,6 +1713,12 @@ export async function getUserPreferences() {
     }
 }
 
+export function getUserPreferencesSync(userId) {
+    if (!userId) return null;
+    const cacheKey = 'user_global_prefs_' + userId;
+    return getFromCache(cacheKey, 60 * 60 * 1000);
+}
+
 // --- USER PREFERENCES (MEU TOM) ---
 
 // (Moved to bottom of file)
@@ -2162,8 +2168,16 @@ export async function getUserSongPreference(songId, userId) {
         .eq('song_id', songId);
 
     if (error || !data || data.length === 0) return null;
-    saveToCache(cacheKey, data[0]);
-    return data[0];
+    const pref = data[0];
+    saveToCache(cacheKey, pref);
+    return pref;
+}
+
+export function getUserSongPreferenceSync(songId, userId) {
+    if (!songId || String(songId).startsWith('media_block_')) return null;
+    if (!userId) return null;
+    const cacheKey = `song_pref_${userId}_${songId}`;
+    return getFromCache(cacheKey);
 }
 
 // --- CHURCH SONG RECOMMENDATIONS ---
@@ -2224,6 +2238,14 @@ export async function getSetlistItemTransposition(itemId) {
     const val = data?.custom_transposition ?? 0;
     setlistItemTranspCache.set(itemId, val);
     return val;
+}
+
+export function getSetlistItemTranspositionSync(itemId) {
+    if (!itemId) return null;
+    if (setlistItemTranspCache.has(itemId)) {
+        return setlistItemTranspCache.get(itemId);
+    }
+    return null;
 }
 
 /**

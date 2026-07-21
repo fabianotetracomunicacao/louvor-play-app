@@ -10,7 +10,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import { useVideoPlayer } from '../contexts/VideoPlayerContext';
 import { Portal } from '../components/Portal';
 
-import { getSongById, getSongsByIds, updatePlaylistItemTransposition, updateSetlistItemTransposition, getUserSongPreference, saveUserSongPreference, incrementSongView, addToHistory, getSongLikeStatus, toggleLike, getUserPreferences, updateSongOriginalKey, getSetlistItemTransposition } from '../utils/storage';
+import { getSongById, getSongsByIds, updatePlaylistItemTransposition, updateSetlistItemTransposition, getUserSongPreference, getUserSongPreferenceSync, saveUserSongPreference, incrementSongView, addToHistory, getSongLikeStatus, toggleLike, getUserPreferences, getUserPreferencesSync, updateSongOriginalKey, getSetlistItemTransposition, getSetlistItemTranspositionSync } from '../utils/storage';
 import { useLiveSession } from '../contexts/LiveSessionContext';
 
 import { transposeSong, getTransposedNote, detectKeyFromContent } from '../utils/transposition';
@@ -673,16 +673,10 @@ export function PlayerPage() {
                     currentSongData.originalKey = detectKeyFromContent(currentSongData.content) || 'C';
                 }
 
-                // Set song data & mark READY IMMEDIATELY (0ms delay)
-                setSong(currentSongData);
-                setIsReady(true);
-
-                // Phase 2: Fetch Preferences (Global & Song Specific)
-                const [globalPrefs, songPrefs, liveSetlistTransp] = await Promise.all([
-                    getUserPreferences(),
-                    songId === 'internet' ? Promise.resolve(null) : getUserSongPreference(songId, user?.id),
-                    (playlistItemId && context?.type === 'setlist') ? getSetlistItemTransposition(playlistItemId) : Promise.resolve(null)
-                ]);
+                // Phase 2: Fetch Preferences (Check Synchronous Cache First for Instant 0ms Load!)
+                const globalPrefs = getUserPreferencesSync(user?.id) || await getUserPreferences();
+                const songPrefs = getUserSongPreferenceSync(songId, user?.id) || (songId === 'internet' ? null : await getUserSongPreference(songId, user?.id));
+                const liveSetlistTransp = getSetlistItemTranspositionSync(playlistItemId) ?? ((playlistItemId && context?.type === 'setlist') ? await getSetlistItemTransposition(playlistItemId) : null);
 
                 const defaultMode = globalPrefs?.default_tone_mode || 'original';
                 const personalTransp = (songPrefs?.transposition !== undefined && songPrefs?.transposition !== null) ? songPrefs.transposition : 0;
@@ -708,20 +702,8 @@ export function PlayerPage() {
                 const finalDisplayMode = songPrefs?.display_mode || globalPrefs?.default_display_mode || 'full';
                 const finalIsAutoSpeed = songPrefs?.is_auto_speed ?? globalPrefs?.default_magic_speed_enabled ?? false;
 
-                setFontSize(finalFontSize);
-                setTabFontSize(finalTabFontSize);
-                setLineSpacing(finalLineSpacing);
-                setScrollSpeed(finalScrollSpeed);
-                setLetterSpacing(finalLetterSpacing);
-                setDisplayMode(finalDisplayMode);
-                setIsAutoSpeedActive(finalIsAutoSpeed);
-
                 // Phase 4: Sync Keys & Final Transposition
-                setSavedTransposition(personalTransp);
-                setChurchTransposition(churchTransp);
-
                 let targetTransp = 0;
-                // IF we are in a SETLIST, we ALWAYS want the Church tab and the Church transposition
                 if (playlistItemId && context?.type === 'setlist') {
                     setActiveTab('church');
                     targetTransp = churchTransp;
@@ -736,14 +718,21 @@ export function PlayerPage() {
                     targetTransp = 0;
                 }
 
+                // Batch ALL state updates together BEFORE setting isReady = true
+                setSong(currentSongData);
+                setFontSize(finalFontSize);
+                setTabFontSize(finalTabFontSize);
+                setLineSpacing(finalLineSpacing);
+                setScrollSpeed(finalScrollSpeed);
+                setLetterSpacing(finalLetterSpacing);
+                setDisplayMode(finalDisplayMode);
+                setIsAutoSpeedActive(finalIsAutoSpeed);
+                setSavedTransposition(personalTransp);
+                setChurchTransposition(churchTransp);
                 setTransposition(targetTransp);
 
-                // Settle Delay: Ensure all state updates are processed by React
-                // and the DOM is essentially "locked" in the new state before fading in.
-                // 100ms is safe and feels instant.
-                setTimeout(() => {
-                    setIsReady(true);
-                }, 100);
+                // Mark ready NOW — song + user tone + font size are rendered TOGETHER instantly!
+                setIsReady(true);
 
             } catch (err) {
                 const errMsg = err?.message || err?.details || String(err) || '';

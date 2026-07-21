@@ -538,7 +538,11 @@ export async function saveSongProjectionSettings(songId, settings, playlistItemI
     }
 
     // 2. If an itemId is provided, save visual settings scoped to that item in the correct table
-    if (playlistItemId) {
+    // Only attempt Supabase update if the itemId looks like a valid UUID (contains dash).
+    // Temporary IDs like 'item_0' cannot be updated in DB until they are synced.
+    const isTempId = playlistItemId && !playlistItemId.includes('-');
+    
+    if (playlistItemId && !isTempId) {
         const table = itemTable === 'setlist_items' ? 'setlist_items' : 'playlist_items';
         const itemUpdatePayload = {
             proj_bg_type: settings.projBgType,

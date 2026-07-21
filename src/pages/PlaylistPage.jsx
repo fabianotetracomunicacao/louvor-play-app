@@ -866,8 +866,20 @@ export function PlaylistPage() {
 
     const handleRemoveSongFromPlaylist = async (itemId) => {
         if (!selectedPlaylist) return;
-        await removeSongFromPlaylist(itemId);
-        await loadPlaylistDetails(selectedPlaylist.id);
+        
+        const confirmed = await confirmAction({
+            title: 'Remover da Playlist',
+            message: 'Deseja remover esta música da playlist? \n\n(Fique tranquilo, ela não será excluída do sistema, apenas desta lista).',
+            confirmText: 'Sim, remover',
+            cancelText: 'Cancelar',
+            type: 'danger'
+        });
+
+        if (confirmed) {
+            await removeSongFromPlaylist(itemId);
+            await loadPlaylistDetails(selectedPlaylist.id);
+            showToast('Música removida da playlist.', 'success');
+        }
     };
 
     const onDragEnd = async (result) => {

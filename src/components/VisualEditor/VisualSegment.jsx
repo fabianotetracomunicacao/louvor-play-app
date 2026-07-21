@@ -158,8 +158,8 @@ export function VisualSegment({
                     className="absolute bg-indigo-600 w-[2.5px] z-50 pointer-events-none animate-pulse shadow-[0_0_8px_rgba(79,70,229,0.4)] rounded-full"
                     style={{ 
                         left: `${cursorPixelX}px`, 
-                        top: '12px',
-                        height: '32px'
+                        top: '2px',
+                        height: '44px'
                     }}
                 ></div>
             )}

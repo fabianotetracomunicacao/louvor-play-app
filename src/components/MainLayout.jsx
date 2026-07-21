@@ -323,7 +323,8 @@ export function MainLayout() {
                                 {isSearchingExternal && externalResults.length === 0 && (
                                     <div className="p-12 flex flex-col items-center gap-3 text-slate-400">
                                         <Loader2 size={32} className="animate-spin opacity-20" />
-                                        <p className="text-xs">Buscando na internet...</p>
+                                        <p className="text-xs font-medium">Buscando na internet...</p>
+                                        <span className="text-[10px] opacity-70 mt-1">(Isso pode levar alguns segundos)</span>
                                     </div>
                                 )}
                             </div>

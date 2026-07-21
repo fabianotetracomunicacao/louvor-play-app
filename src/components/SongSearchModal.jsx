@@ -215,7 +215,8 @@ export function SongSearchModal({ isOpen, onClose, onImport }) {
                             {isSearching && externalResults.length === 0 && query && (
                                 <div className="flex flex-col items-center py-8 text-slate-400">
                                     <Loader2 size={32} className="animate-spin opacity-20 mb-3" />
-                                    <p className="text-xs">Buscando na internet...</p>
+                                    <p className="text-xs font-medium">Buscando na internet...</p>
+                                    <span className="text-[10px] opacity-70 mt-1">(Isso pode levar alguns segundos)</span>
                                 </div>
                             )}
 

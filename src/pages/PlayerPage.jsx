@@ -1696,12 +1696,12 @@ export function PlayerPage() {
                                 : 'opacity-0 max-h-0 scale-y-95 mt-0 p-0 border-0 pointer-events-none'
                             }
                         `}>
-                            <div className="flex items-center justify-between mb-1.5">
-                                <label className="text-xs text-amber-400/90 uppercase font-bold tracking-wider flex items-center gap-2" title="0 = Automático (70% do texto)">
-                                    <Type size={12} className="italic" /> Tam. Tablatura (0 = Auto)
+                            <div className="flex items-center justify-between mb-1.5 gap-2">
+                                <label className="text-xs text-amber-400/90 uppercase font-bold tracking-wider flex items-center gap-2 whitespace-nowrap" title="0 = Automático (70% do texto)">
+                                    <Type size={12} className="italic" /> Tam. Tablatura
                                 </label>
-                                <span className="font-mono text-xs text-amber-400 font-bold">
-                                    {tabFontSize ? `${tabFontSize}pt` : 'Auto (0)'}
+                                <span className="font-mono text-xs text-amber-400 font-bold whitespace-nowrap">
+                                    {tabFontSize ? `${tabFontSize}pt` : 'Auto'}
                                 </span>
                             </div>
                             <div className="flex items-center gap-2">

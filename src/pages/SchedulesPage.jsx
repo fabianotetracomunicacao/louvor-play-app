@@ -66,14 +66,14 @@ export function SchedulesPage() {
                         playlistItemId: si.id,
                         title: si.song?.title,
                         artist: si.song?.artist,
-                        tone: si.tone,
+                        tone: si.custom_transposition || 0,
                         song: si.song
                     }))
                 },
                 song: firstItem.song,
                 playlistItemId: firstItem.id,
                 currentIndex: 0,
-                initialTransposition: firstItem.tone || 0
+                initialTransposition: firstItem.custom_transposition || 0
             }
         });
     };

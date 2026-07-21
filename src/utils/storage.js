@@ -1091,7 +1091,7 @@ export async function getMySchedules() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
         .from('setlist_scales')
         .select(`
             id,
@@ -1105,7 +1105,7 @@ export async function getMySchedules() {
                 items: setlist_items (
                     id,
                     song_id,
-                    tone,
+                    custom_transposition,
                     position,
                     song: songs (*)
                 )
@@ -1115,8 +1115,28 @@ export async function getMySchedules() {
         .order('created_at', { ascending: false });
 
     if (error) {
-        console.error("Error fetching schedules:", error);
-        throw error;
+        console.warn("[getMySchedules] Detailed query error, falling back to basic query:", error);
+        const fallback = await supabase
+            .from('setlist_scales')
+            .select(`
+                id,
+                role,
+                created_at,
+                setlist: setlists (
+                    id,
+                    name,
+                    date,
+                    playlist_id
+                )
+            `)
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
+
+        if (fallback.error) {
+            console.error("Error fetching schedules (fallback):", fallback.error);
+            throw fallback.error;
+        }
+        data = fallback.data;
     }
 
     if (data) {

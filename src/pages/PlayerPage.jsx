@@ -10,7 +10,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import { useVideoPlayer } from '../contexts/VideoPlayerContext';
 import { Portal } from '../components/Portal';
 
-import { getSongById, updatePlaylistItemTransposition, updateSetlistItemTransposition, getUserSongPreference, saveUserSongPreference, incrementSongView, addToHistory, getSongLikeStatus, toggleLike, getUserPreferences, updateSongOriginalKey, getSetlistItemTransposition } from '../utils/storage';
+import { getSongById, getSongsByIds, updatePlaylistItemTransposition, updateSetlistItemTransposition, getUserSongPreference, saveUserSongPreference, incrementSongView, addToHistory, getSongLikeStatus, toggleLike, getUserPreferences, updateSongOriginalKey, getSetlistItemTransposition } from '../utils/storage';
 import { useLiveSession } from '../contexts/LiveSessionContext';
 
 import { transposeSong, getTransposedNote, detectKeyFromContent } from '../utils/transposition';
@@ -579,36 +579,42 @@ export function PlayerPage() {
         };
     }, [song, location.state]);
 
-    // 1b. Background Pre-fetching for Setlists/Playlists
+    // 1b. Background Pre-fetching for Setlists/Playlists (Full Song Content & Preferences)
     useEffect(() => {
         const context = location.state?.context;
         if (!context || !context.items || context.items.length <= 1 || !user) return;
 
-        const prefetchPreferences = async () => {
+        const prefetchSongsAndPreferences = async () => {
             try {
-                // Extract all song IDs from the context except the current one
                 const songIds = context.items.map(item => item.id).filter(id => id && id !== songId);
                 if (songIds.length === 0) return;
 
-                console.log(`[Pre-fetch] Starting background load for ${songIds.length} songs for user ${user.id}...`);
+                console.log(`[Pre-fetch] Batch loading ${songIds.length} songs & preferences for user ${user.id}...`);
 
-                // Batch fetch preferences for all songs in the list
-                // We use batches of 5 to avoid overwhelming the connection
-                for (let i = 0; i < songIds.length; i += 5) {
-                    const batch = songIds.slice(i, i + 5);
-                    await Promise.all(batch.map(async (sid) => {
-                        // This updates the local cache via the internal cache mechanism in storage.js
-                        await getUserSongPreference(sid, user.id);
-                    }));
-                }
-                console.log(`[Pre-fetch] Completed background load.`);
+                // 1. Batch load full song objects (chords & lyrics text)
+                const songsMap = await getSongsByIds(songIds);
+
+                // 2. Populate in-memory context items with loaded song data
+                context.items.forEach(item => {
+                    if (item.id && songsMap[item.id]) {
+                        const cachedSong = songsMap[item.id];
+                        item.song = cachedSong;
+                        item.content = cachedSong.content;
+                        item.artist = item.artist || cachedSong.artist;
+                        item.originalKey = item.originalKey || cachedSong.originalKey;
+                    }
+                });
+
+                // 3. Batch load preferences for all songs
+                await Promise.all(songIds.map(sid => getUserSongPreference(sid, user.id)));
+
+                console.log(`[Pre-fetch] Completed background load for all songs in setlist/playlist.`);
             } catch (err) {
                 console.warn("[Pre-fetch] Error during background load:", err);
             }
         };
 
-        // Delay pre-fetch slightly to prioritize current song initial load
-        const timeoutId = setTimeout(prefetchPreferences, 1500);
+        const timeoutId = setTimeout(prefetchSongsAndPreferences, 100);
         return () => clearTimeout(timeoutId);
     }, [location.state?.context?.id, songId, user?.id]);
 

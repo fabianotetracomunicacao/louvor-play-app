@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, Music, ArrowRight, User, List, ChevronRight } from 'lucide-react';
+import { Calendar, Clock, Music, ArrowRight, User, List, ChevronRight, Play } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getMySchedules } from '../utils/storage';
+import { useNotification } from '../contexts/NotificationContext';
 
 export function SchedulesPage() {
     const [schedules, setSchedules] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const navigate = useNavigate();
+    const { showToast } = useNotification();
 
     useEffect(() => {
         const loadSchedules = async () => {
@@ -36,9 +38,44 @@ export function SchedulesPage() {
         return d >= today;
     };
 
-    // Group scales by upcoming and past
-    const upcoming = schedules.filter(s => isFuture(s.setlist?.date));
-    const past = schedules.filter(s => !isFuture(s.setlist?.date));
+    const handlePlayScale = (e, item) => {
+        e.stopPropagation();
+        const setlist = item.setlist;
+        if (!setlist || !setlist.items || setlist.items.length === 0) {
+            showToast('Esta escala não possui músicas cadastradas no momento.', 'info');
+            return;
+        }
+
+        const firstItem = setlist.items[0];
+        const firstSongId = firstItem.song?.id || firstItem.song_id;
+
+        if (!firstSongId) {
+            showToast('Não foi possível carregar a primeira música da escala.', 'warning');
+            return;
+        }
+
+        navigate(`/player/${firstSongId}`, {
+            state: {
+                context: {
+                    type: 'setlist',
+                    id: setlist.id,
+                    title: setlist.name,
+                    items: setlist.items.map(si => ({
+                        id: si.song?.id || si.song_id,
+                        playlistItemId: si.id,
+                        title: si.song?.title,
+                        artist: si.song?.artist,
+                        tone: si.tone,
+                        song: si.song
+                    }))
+                },
+                song: firstItem.song,
+                playlistItemId: firstItem.id,
+                currentIndex: 0,
+                initialTransposition: firstItem.tone || 0
+            }
+        });
+    };
 
     if (isLoading) {
         return (
@@ -80,7 +117,17 @@ export function SchedulesPage() {
                         </div>
                     </div>
                 </div>
-                <ChevronRight size={20} className="text-slate-300 group-hover:text-purple-500 transition self-center" />
+                <div className="flex items-center gap-2 self-center shrink-0">
+                    <button
+                        onClick={(e) => handlePlayScale(e, item)}
+                        className="flex items-center gap-1.5 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold text-xs shadow-md shadow-purple-500/20 transition"
+                        title="Tocar esta escala"
+                    >
+                        <Play size={14} fill="currentColor" />
+                        <span>Tocar</span>
+                    </button>
+                    <ChevronRight size={20} className="text-slate-300 group-hover:text-purple-500 transition" />
+                </div>
             </div>
         </div>
     );

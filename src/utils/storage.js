@@ -320,6 +320,47 @@ export async function getSongs(options = {}) {
 
 
 
+const songMemoryCache = new Map();
+
+/**
+ * Batch fetch multiple songs by IDs with memory caching.
+ * @param {string[]} ids 
+ * @returns {Promise<Record<string, object>>}
+ */
+export async function getSongsByIds(ids) {
+    if (!ids || ids.length === 0) return {};
+
+    const cleanIds = ids.filter(id => id && !String(id).startsWith('media_block_'));
+    const uncachedIds = cleanIds.filter(id => !songMemoryCache.has(id));
+
+    if (uncachedIds.length > 0) {
+        try {
+            const { data, error } = await supabase
+                .from('songs')
+                .select('*, creator:created_by(email, name, full_name)')
+                .in('id', uncachedIds);
+
+            if (!error && data) {
+                data.forEach(s => {
+                    const mapped = mapSongFromDb(s);
+                    songMemoryCache.set(mapped.id, mapped);
+                });
+            }
+        } catch (e) {
+            console.error("Error batch fetching songs:", e);
+        }
+    }
+
+    const result = {};
+    cleanIds.forEach(id => {
+        if (songMemoryCache.has(id)) {
+            result[id] = songMemoryCache.get(id);
+        }
+    });
+
+    return result;
+}
+
 /**
  * Get a single song by ID.
  * @param {string} id 
@@ -327,6 +368,11 @@ export async function getSongs(options = {}) {
  */
 export async function getSongById(id) {
     if (!id || String(id).startsWith('media_block_')) return null;
+
+    if (songMemoryCache.has(id)) {
+        return songMemoryCache.get(id);
+    }
+
     const { data, error } = await supabase
         .from('songs')
         .select('*, creator:created_by(email, name, full_name)')
@@ -337,7 +383,9 @@ export async function getSongById(id) {
         console.error("Error fetching song:", error);
         return null;
     }
-    return mapSongFromDb(data);
+    const mapped = mapSongFromDb(data);
+    songMemoryCache.set(mapped.id, mapped);
+    return mapped;
 }
 
 /**
@@ -1053,7 +1101,14 @@ export async function getMySchedules() {
                 id,
                 name,
                 date,
-                playlist_id
+                playlist_id,
+                items: setlist_items (
+                    id,
+                    song_id,
+                    tone,
+                    position,
+                    song: songs (*)
+                )
             )
         `)
         .eq('user_id', user.id)
@@ -1063,6 +1118,15 @@ export async function getMySchedules() {
         console.error("Error fetching schedules:", error);
         throw error;
     }
+
+    if (data) {
+        data.forEach(s => {
+            if (s.setlist && s.setlist.items) {
+                s.setlist.items.sort((a, b) => (a.position || 0) - (b.position || 0));
+            }
+        });
+    }
+
     return data;
 }
 
@@ -2052,7 +2116,7 @@ export async function getUserSongPreference(songId, userId) {
     if (!user && !userId) return null;
     const uid = userId || user.id;
 
-    const cacheKey = `song_pref_${uid}_${songId} `;
+    const cacheKey = `song_pref_${uid}_${songId}`;
 
     // Return cache immediately
     const cached = getFromCache(cacheKey);

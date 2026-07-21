@@ -3,7 +3,7 @@ import {
     Save, Play, Music, ArrowLeft, Settings, Type, AlignJustify, Search, PlusCircle, Trash2,
     Eye, EyeOff, LayoutTemplate, Copy, CheckCircle, AlertTriangle, Info, ChevronDown, ChevronRight,
     Settings2, X, Pause, FileDown, Bold, Upload, File, Loader2, Clock, PlayCircle, Tag, Eraser, Pencil,
-    Globe, Sparkles
+    Globe, Sparkles, Bookmark
 } from 'lucide-react';
 
 
@@ -62,6 +62,9 @@ export function EditorPage() {
     // Import State
     const [isImporting, setIsImporting] = useState(false);
     const [importText, setImportText] = useState('');
+
+    // Section Dropdown State
+    const [isSectionMenuOpen, setIsSectionMenuOpen] = useState(false);
 
     // Metadata Modal State
     const [isMetadataModalOpen, setIsMetadataModalOpen] = useState(false);
@@ -520,6 +523,33 @@ export function EditorPage() {
         }
     };
 
+    const handleInsertSection = (sectionName) => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = textarea.value;
+
+        const before = text.substring(0, start);
+        const after = text.substring(end);
+
+        const needsNewlineBefore = before.length > 0 && !before.endsWith('\n');
+        const needsNewlineAfter = after.length > 0 && !after.startsWith('\n');
+
+        const insert = `${needsNewlineBefore ? '\n' : ''}{c: ${sectionName}}${needsNewlineAfter ? '\n' : ''}`;
+        const newText = before + insert + after;
+        const newCursorPos = start + insert.length;
+
+        setContent(newText);
+        setIsSectionMenuOpen(false);
+
+        setTimeout(() => {
+            textarea.focus();
+            textarea.setSelectionRange(newCursorPos, newCursorPos);
+        }, 0);
+    };
+
 
     const handleEditTag = (e) => {
         if (e) e.preventDefault();
@@ -899,6 +929,63 @@ export function EditorPage() {
                                     >
                                         <Bold size={16} />
                                     </button>
+
+                                    {/* Botão de Seções {c: ...} */}
+                                    <div className="relative">
+                                        <button
+                                            onClick={() => setIsSectionMenuOpen(!isSectionMenuOpen)}
+                                            className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-700 dark:text-slate-300 transition flex items-center gap-0.5"
+                                            title="Inserir Marcação de Seção ({c: Seção})"
+                                        >
+                                            <Bookmark size={16} className="text-purple-600 dark:text-purple-400" />
+                                            <ChevronDown size={12} className="text-slate-400" />
+                                        </button>
+
+                                        {isSectionMenuOpen && (
+                                            <>
+                                                <div className="fixed inset-0 z-40" onClick={() => setIsSectionMenuOpen(false)} />
+                                                <div className="absolute left-0 top-full mt-1 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 py-1.5 z-50">
+                                                    <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-700 mb-1">
+                                                        Inserir Seção
+                                                    </div>
+                                                    {[
+                                                        'Primeira Parte',
+                                                        'Segunda Parte',
+                                                        'Pré-Refrão',
+                                                        'Refrão',
+                                                        'Solo',
+                                                        'Intro',
+                                                        'Ponte',
+                                                        'Interlúdio',
+                                                        'Final'
+                                                    ].map((sec) => (
+                                                        <button
+                                                            key={sec}
+                                                            onClick={() => handleInsertSection(sec)}
+                                                            className="w-full text-left px-3 py-1.5 text-xs text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-900/30 hover:text-purple-600 dark:hover:text-purple-300 transition flex items-center justify-between"
+                                                        >
+                                                            <span className="font-medium">{sec}</span>
+                                                            <span className="text-[10px] text-slate-400 font-mono">{`{c: ${sec}}`}</span>
+                                                        </button>
+                                                    ))}
+                                                    <div className="border-t border-slate-100 dark:border-slate-700 mt-1 pt-1">
+                                                        <button
+                                                            onClick={() => {
+                                                                setIsSectionMenuOpen(false);
+                                                                const customName = window.prompt("Nome da seção personalizada (ex: Ponte 2, Especial):");
+                                                                if (customName && customName.trim()) {
+                                                                    handleInsertSection(customName.trim());
+                                                                }
+                                                            }}
+                                                            className="w-full text-left px-3 py-1.5 text-xs text-purple-600 dark:text-purple-400 font-semibold hover:bg-purple-50 dark:hover:bg-purple-900/30 transition flex items-center justify-between"
+                                                        >
+                                                            <span>+ Personalizada...</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
                                     <button
                                         onClick={handleInsertTag}
                                         className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-700 dark:text-slate-300 transition"

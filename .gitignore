@@ -23,6 +23,7 @@ yarn-error.log*
 # Ignored assets and backups
 *.zip
 *.tar.gz
+.backups/
 Fotos de fundo/
 Vídeos capa fundo/
 ícone animado/

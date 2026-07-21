@@ -2204,8 +2204,13 @@ export async function updateChurchSongRecommendation(songId, churchId, transposi
     return true;
 }
 
+const setlistItemTranspCache = new Map();
+
 export async function getSetlistItemTransposition(itemId) {
     if (!itemId) return null;
+    if (setlistItemTranspCache.has(itemId)) {
+        return setlistItemTranspCache.get(itemId);
+    }
     const { data, error } = await supabase
         .from('setlist_items')
         .select('custom_transposition')
@@ -2216,7 +2221,9 @@ export async function getSetlistItemTransposition(itemId) {
         console.error("Error fetching setlist item transposition:", error);
         return null;
     }
-    return data?.custom_transposition;
+    const val = data?.custom_transposition ?? 0;
+    setlistItemTranspCache.set(itemId, val);
+    return val;
 }
 
 /**

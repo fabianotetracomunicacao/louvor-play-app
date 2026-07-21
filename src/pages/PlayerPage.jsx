@@ -605,8 +605,13 @@ export function PlayerPage() {
                     }
                 });
 
-                // 3. Batch load preferences for all songs
-                await Promise.all(songIds.map(sid => getUserSongPreference(sid, user.id)));
+                // 3. Batch load preferences and transpositions for all songs in background
+                await Promise.all(context.items.map(async (item) => {
+                    const sid = item.id || item.song_id;
+                    if (sid) await getUserSongPreference(sid, user.id);
+                    const pit = item.playlistItemId || item.id;
+                    if (pit) await getSetlistItemTransposition(pit);
+                }));
 
                 console.log(`[Pre-fetch] Completed background load for all songs in setlist/playlist.`);
             } catch (err) {
@@ -616,7 +621,7 @@ export function PlayerPage() {
 
         const timeoutId = setTimeout(prefetchSongsAndPreferences, 100);
         return () => clearTimeout(timeoutId);
-    }, [location.state?.context?.id, songId, user?.id]);
+    }, [location.state?.context?.id, user?.id]);
 
     // Scroll Reset on Song Change
     useEffect(() => {
@@ -655,6 +660,8 @@ export function PlayerPage() {
                 // Check if we have COMPLETE song data in state (including content)
                 if (location.state?.song?.content) {
                     currentSongData = location.state.song;
+                } else if (location.state?.song?.song?.content) {
+                    currentSongData = location.state.song.song;
                 } else {
                     currentSongData = await getSongById(songId);
                 }
@@ -666,8 +673,9 @@ export function PlayerPage() {
                     currentSongData.originalKey = detectKeyFromContent(currentSongData.content) || 'C';
                 }
 
-                // Set song data immediately but don't show yet
+                // Set song data & mark READY IMMEDIATELY (0ms delay)
                 setSong(currentSongData);
+                setIsReady(true);
 
                 // Phase 2: Fetch Preferences (Global & Song Specific)
                 const [globalPrefs, songPrefs, liveSetlistTransp] = await Promise.all([

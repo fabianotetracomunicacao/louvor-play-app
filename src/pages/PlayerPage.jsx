@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import { useSearchParams, useOutletContext, useNavigate, useLocation, useParams } from 'react-router-dom';
 import {
     Settings2, X, Music, Play, Pause, Minus, Plus, Type, AlignJustify,
@@ -43,6 +42,16 @@ export function PlayerPage() {
     const previousItem = context && currentIndex > 0 ? context.items[currentIndex - 1] : null;
 
     const [song, setSong] = useState(location.state?.song || null);
+    const [prevSongId, setPrevSongId] = useState(songId);
+
+    // Synchronously sync song state during render on songId change
+    if (songId !== prevSongId) {
+        setPrevSongId(songId);
+        const incomingSong = location.state?.song?.content ? location.state.song : (location.state?.song?.song?.content ? location.state.song.song : null);
+        if (incomingSong) {
+            setSong(incomingSong);
+        }
+    }
 
     // Live Session Hook & Data
     const {
@@ -623,8 +632,8 @@ export function PlayerPage() {
         return () => clearTimeout(timeoutId);
     }, [location.state?.context?.id, user?.id]);
 
-    // Scroll Reset on Song Change
-    useEffect(() => {
+    // Scroll Reset on Song Change (Reset BEFORE browser paint to prevent upward scrolling animation)
+    useLayoutEffect(() => {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = 0;
         }

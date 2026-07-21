@@ -128,6 +128,9 @@ export function SchedulesPage() {
         </div>
     );
 
+    const upcoming = schedules.filter(s => isFuture(s.setlist?.date));
+    const past = schedules.filter(s => !isFuture(s.setlist?.date));
+
     return (
         <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-5 duration-500">
             <header className="flex items-center gap-3">

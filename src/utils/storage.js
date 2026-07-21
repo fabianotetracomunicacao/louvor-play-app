@@ -2816,16 +2816,6 @@ async function deleteFileFromServer(url) {
                 const { error } = await supabase.storage.from('media').remove([filePath]);
                 if (error) console.error("Error deleting from supabase:", error);
             }
-        } else if (url.includes('/uploads/')) {
-            const filename = url.split('/').pop();
-            const formData = new FormData();
-            formData.append('action', 'delete');
-            formData.append('filename', filename);
-
-            await fetch('https://louvorplay.com.br/api/upload.php', {
-                method: 'POST',
-                body: formData
-            }).catch(() => {});
         }
     } catch (err) {
         console.error("Failed to delete file from server:", err);

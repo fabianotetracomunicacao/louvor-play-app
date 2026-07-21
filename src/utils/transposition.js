@@ -17,19 +17,47 @@ function normalizeNote(note) {
     return note;
 }
 
+export function getScalePreference(rootIndex, isMinor) {
+    if (isMinor) {
+        return [0, 2, 3, 5, 7, 10].includes(rootIndex) ? 'flat' : 'sharp';
+    } else {
+        return [1, 3, 5, 6, 8, 10].includes(rootIndex) ? 'flat' : 'sharp';
+    }
+}
+
+export function getKeyInfo(keyString) {
+    if (!keyString) return null;
+    const match = keyString.match(/^([A-G])([#b]?)(m?)/);
+    if (!match) return null;
+
+    let root = match[1];
+    let accidental = match[2];
+    let isMinor = match[3] === 'm';
+
+    let fullRoot = normalizeNote(root + accidental);
+    let index = NOTES_SHARP.indexOf(fullRoot);
+    if (index === -1) index = NOTES_FLAT.indexOf(fullRoot);
+    if (index === -1) return null;
+
+    return { index, isMinor };
+}
+
 /**
  * Transposes a single chord by a number of semitones.
  * @param {string} chord The chord string (e.g., "Am7/G")
  * @param {number} semitones Number of semitones to shift (can be negative)
+ * @param {boolean} preferFlats Whether to output using flat accidentals instead of sharps
  * @returns {string} The transposed chord
  */
-export function transposeChord(chord, semitones) {
+export function transposeChord(chord, semitones, preferFlats = false) {
     if (!chord) return chord;
+    const shift = parseInt(semitones, 10);
+    if (isNaN(shift) || shift === 0) return chord;
 
     // Handle slash chords (e.g., C/G)
     if (chord.includes('/')) {
         const parts = chord.split('/');
-        return transposeChord(parts[0], semitones) + '/' + transposeChord(parts[1], semitones);
+        return transposeChord(parts[0], shift, preferFlats) + '/' + transposeChord(parts[1], shift, preferFlats);
     }
 
     // Regex to match root note (A-G, optionally # or b)
@@ -48,27 +76,21 @@ export function transposeChord(chord, semitones) {
     // but here we'll just try to locate in both and see which fits.
 
     let index = NOTES_SHARP.indexOf(fullRoot);
-    let scale = NOTES_SHARP;
-
-    if (index === -1) {
-        index = NOTES_FLAT.indexOf(fullRoot);
-        scale = NOTES_FLAT;
-    }
-
+    if (index === -1) index = NOTES_FLAT.indexOf(fullRoot);
     if (index === -1) return chord; // Unknown note
 
     // Calculate new index
     // Add 120 to avoid negative modulo issues
-    let newIndex = (index + semitones + 120) % 12;
+    let newIndex = (index + shift + 120) % 12;
 
-    // TODO: Better logic to decide whether to return Sharp or Flat result
-    // For now, return from the same scale type if possible, or Sharp by default
-
+    const scale = preferFlats ? NOTES_FLAT : NOTES_SHARP;
     return scale[newIndex] + suffix;
 }
 
-export function getTransposedNote(note, semitones) {
+export function getTransposedNote(note, semitones, forcePreferFlats = null) {
     if (!note) return '?';
+    const shift = parseInt(semitones, 10);
+    if (isNaN(shift) || shift === 0) return note;
 
     // 1. Separate Root from Suffix (e.g. "Am" -> "A" + "m")
     const match = note.match(/^([A-G])([#b]?)(.*)$/);
@@ -83,14 +105,18 @@ export function getTransposedNote(note, semitones) {
     if (!NOTES_SHARP.includes(fullRoot) && !NOTES_FLAT.includes(fullRoot)) return note;
 
     let index = NOTES_SHARP.indexOf(fullRoot);
-    let scale = NOTES_SHARP;
+    if (index === -1) index = NOTES_FLAT.indexOf(fullRoot);
+    if (index === -1) return note;
 
-    if (index === -1) {
-        index = NOTES_FLAT.indexOf(fullRoot);
-        scale = NOTES_FLAT;
+    let newIndex = (index + shift + 120) % 12;
+
+    let preferFlats = forcePreferFlats;
+    if (preferFlats === null) {
+        const isMinor = suffix.startsWith('m') && !suffix.startsWith('maj');
+        preferFlats = getScalePreference(newIndex, isMinor) === 'flat';
     }
 
-    let newIndex = (index + semitones + 120) % 12;
+    const scale = preferFlats ? NOTES_FLAT : NOTES_SHARP;
     return scale[newIndex] + suffix; // Append suffix back (e.g. "Cm")
 }
 
@@ -101,11 +127,23 @@ export function getTransposedNote(note, semitones) {
  * @returns {string} Transposed content
  */
 export function transposeSong(content, semitones) {
-    if (semitones === 0) return content;
+    const shift = parseInt(semitones, 10);
+    if (isNaN(shift) || shift === 0) return content;
+
+    const originalKey = detectKeyFromContent(content);
+    let preferFlats = false;
+
+    if (originalKey) {
+        const keyInfo = getKeyInfo(originalKey);
+        if (keyInfo !== null) {
+            const targetIndex = (keyInfo.index + shift + 120) % 12;
+            preferFlats = getScalePreference(targetIndex, keyInfo.isMinor) === 'flat';
+        }
+    }
 
     // Replace all occurrences of [Chord]
     return content.replace(/\[(.*?)\]/g, (match, chord) => {
-        return `[${transposeChord(chord, semitones)}]`;
+        return `[${transposeChord(chord, shift, preferFlats)}]`;
     });
 }
 /**

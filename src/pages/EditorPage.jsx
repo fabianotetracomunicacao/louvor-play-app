@@ -3,7 +3,7 @@ import {
     Save, Play, Music, ArrowLeft, Settings, Type, AlignJustify, Search, PlusCircle, Trash2,
     Eye, EyeOff, LayoutTemplate, Copy, CheckCircle, AlertTriangle, Info, ChevronDown, ChevronRight,
     Settings2, X, Pause, FileDown, Bold, Upload, File, Loader2, Clock, PlayCircle, Tag, Eraser, Pencil,
-    Globe, Sparkles, Bookmark
+    Globe, Sparkles, Bookmark, Undo, Redo
 } from 'lucide-react';
 
 
@@ -65,6 +65,76 @@ export function EditorPage() {
 
     // Section Dropdown State
     const [isSectionMenuOpen, setIsSectionMenuOpen] = useState(false);
+
+    // Undo / Redo History State
+    const historyRef = useRef([]);
+    const redoRef = useRef([]);
+    const contentRef = useRef('');
+    const lastSavedContentRef = useRef('');
+    const typingTimeoutRef = useRef(null);
+    const typingSessionRef = useRef(false);
+
+    const [canUndo, setCanUndo] = useState(false);
+    const [canRedo, setCanRedo] = useState(false);
+
+    const updateUndoRedoStatus = () => {
+        setCanUndo(historyRef.current.length > 0);
+        setCanRedo(redoRef.current.length > 0);
+    };
+
+    const pushHistory = (snapshot) => {
+        if (snapshot === undefined || snapshot === null) return;
+        const history = historyRef.current;
+        if (history.length > 0 && history[history.length - 1] === snapshot) return;
+        history.push(snapshot);
+        if (history.length > 50) history.shift();
+        redoRef.current = [];
+        lastSavedContentRef.current = snapshot;
+        updateUndoRedoStatus();
+    };
+
+    const handleUndo = () => {
+        if (historyRef.current.length === 0) return;
+        const previous = historyRef.current.pop();
+        redoRef.current.push(contentRef.current);
+        contentRef.current = previous;
+        lastSavedContentRef.current = previous;
+        setContent(previous);
+        updateUndoRedoStatus();
+    };
+
+    const handleRedo = () => {
+        if (redoRef.current.length === 0) return;
+        const next = redoRef.current.pop();
+        historyRef.current.push(contentRef.current);
+        contentRef.current = next;
+        lastSavedContentRef.current = next;
+        setContent(next);
+        updateUndoRedoStatus();
+    };
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+            const modifier = isMac ? e.metaKey : e.ctrlKey;
+
+            if (modifier && e.key.toLowerCase() === 'z') {
+                if (e.shiftKey) {
+                    e.preventDefault();
+                    handleRedo();
+                } else {
+                    e.preventDefault();
+                    handleUndo();
+                }
+            } else if (modifier && e.key.toLowerCase() === 'y') {
+                e.preventDefault();
+                handleRedo();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
 
     // Metadata Modal State
     const [isMetadataModalOpen, setIsMetadataModalOpen] = useState(false);
@@ -923,6 +993,23 @@ export function EditorPage() {
                             ) : (
                                 <div className="h-8 md:h-auto flex items-center gap-2 justify-start w-full md:w-auto">
                                     <button
+                                        onClick={handleUndo}
+                                        disabled={!canUndo}
+                                        className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-700 dark:text-slate-300 transition disabled:opacity-30 disabled:hover:bg-transparent"
+                                        title="Desfazer (Ctrl+Z)"
+                                    >
+                                        <Undo size={16} />
+                                    </button>
+                                    <button
+                                        onClick={handleRedo}
+                                        disabled={!canRedo}
+                                        className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-700 dark:text-slate-300 transition disabled:opacity-30 disabled:hover:bg-transparent"
+                                        title="Refazer (Ctrl+Y)"
+                                    >
+                                        <Redo size={16} />
+                                    </button>
+
+                                    <button
                                         onClick={handleInsertBold}
                                         className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-700 dark:text-slate-300 transition"
                                         title="Negrito (Refrão)"
@@ -1059,7 +1146,21 @@ export function EditorPage() {
                         <textarea
                             ref={textareaRef}
                             value={content}
-                            onChange={e => setContent(e.target.value)}
+                            onChange={(e) => {
+                                const newText = e.target.value;
+                                const oldText = contentRef.current;
+                                if (!typingSessionRef.current) {
+                                    pushHistory(oldText);
+                                    typingSessionRef.current = true;
+                                }
+                                if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+                                typingTimeoutRef.current = setTimeout(() => {
+                                    typingSessionRef.current = false;
+                                }, 700);
+
+                                setContent(newText);
+                                contentRef.current = newText;
+                            }}
                             onScroll={(e) => {
                                 const backdrop = document.getElementById('editor-backdrop');
                                 if (backdrop) {

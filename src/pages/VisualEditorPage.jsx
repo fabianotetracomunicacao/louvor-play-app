@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
     ArrowLeft, Save, PlusCircle, Tag, Type, History, Music, Layout, 
-    Eye, Settings, AlertTriangle, CheckCircle, Loader2, Sparkles
+    Eye, Settings, AlertTriangle, CheckCircle, Loader2, Sparkles, Undo, Redo
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
@@ -27,6 +27,76 @@ export function VisualEditorPage() {
 
 
     const { songStructure, setSongStructure, updateFromChordPro, getChordPro } = useVisualSync();
+
+    // History (Undo / Redo) for Visual Editor
+    const historyRef = useRef([]);
+    const redoRef = useRef([]);
+    const songStructureRef = useRef(songStructure);
+    const [canUndo, setCanUndo] = useState(false);
+    const [canRedo, setCanRedo] = useState(false);
+
+    useEffect(() => {
+        songStructureRef.current = songStructure;
+    }, [songStructure]);
+
+    const updateUndoRedoStatus = () => {
+        setCanUndo(historyRef.current.length > 0);
+        setCanRedo(redoRef.current.length > 0);
+    };
+
+    const pushHistory = (struct) => {
+        if (!struct) return;
+        const json = JSON.stringify(struct);
+        const history = historyRef.current;
+        if (history.length > 0 && history[history.length - 1] === json) return;
+        history.push(json);
+        if (history.length > 50) history.shift();
+        redoRef.current = [];
+        updateUndoRedoStatus();
+    };
+
+    const handleUndo = () => {
+        if (historyRef.current.length === 0) return;
+        const prevJson = historyRef.current.pop();
+        redoRef.current.push(JSON.stringify(songStructureRef.current));
+        const prevStruct = JSON.parse(prevJson);
+        songStructureRef.current = prevStruct;
+        setSongStructure(prevStruct);
+        updateUndoRedoStatus();
+    };
+
+    const handleRedo = () => {
+        if (redoRef.current.length === 0) return;
+        const nextJson = redoRef.current.pop();
+        historyRef.current.push(JSON.stringify(songStructureRef.current));
+        const nextStruct = JSON.parse(nextJson);
+        songStructureRef.current = nextStruct;
+        setSongStructure(nextStruct);
+        updateUndoRedoStatus();
+    };
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+            const modifier = isMac ? e.metaKey : e.ctrlKey;
+
+            if (modifier && e.key.toLowerCase() === 'z') {
+                if (e.shiftKey) {
+                    e.preventDefault();
+                    handleRedo();
+                } else {
+                    e.preventDefault();
+                    handleUndo();
+                }
+            } else if (modifier && e.key.toLowerCase() === 'y') {
+                e.preventDefault();
+                handleRedo();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
 
     // Redireciona se não for editor
     useEffect(() => {
@@ -56,17 +126,20 @@ export function VisualEditorPage() {
     }, [songId, updateFromChordPro]);
 
     const handleUpdateLine = (index, updatedLine) => {
+        pushHistory(songStructureRef.current);
         const newStructure = [...songStructure];
         newStructure[index] = updatedLine;
         setSongStructure(newStructure);
     };
 
     const handleDeleteLine = (index) => {
+        pushHistory(songStructureRef.current);
         const newStructure = songStructure.filter((_, i) => i !== index);
         setSongStructure(newStructure);
     };
 
     const handleSplitLine = (index, headSegments, tailSegments) => {
+        pushHistory(songStructureRef.current);
         const newStructure = [...songStructure];
         
         // Atualiza a linha atual com os segmentos que ficam
@@ -87,7 +160,7 @@ export function VisualEditorPage() {
     };
     const handleMergeLines = (index) => {
         if (index <= 0) return;
-        
+        pushHistory(songStructureRef.current);
         const newStructure = [...songStructure];
         const prevLine = newStructure[index - 1];
         const currLine = newStructure[index];
@@ -131,6 +204,7 @@ export function VisualEditorPage() {
         } else {
             newLine = { type: 'line', segments: [{ chord: null, text: '' }] };
         }
+        pushHistory(songStructureRef.current);
         setSongStructure([...songStructure, newLine]);
     };
 
@@ -212,6 +286,25 @@ export function VisualEditorPage() {
                 </div>
                 
                 <div className="flex items-center gap-2">
+                    <button
+                        onClick={handleUndo}
+                        disabled={!canUndo}
+                        className="flex items-center gap-1 px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg transition text-sm font-medium disabled:opacity-30 disabled:hover:bg-slate-100"
+                        title="Desfazer (Ctrl+Z)"
+                    >
+                        <Undo size={16} />
+                        <span className="hidden md:inline">Desfazer</span>
+                    </button>
+                    <button
+                        onClick={handleRedo}
+                        disabled={!canRedo}
+                        className="flex items-center gap-1 px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg transition text-sm font-medium disabled:opacity-30 disabled:hover:bg-slate-100"
+                        title="Refazer (Ctrl+Y)"
+                    >
+                        <Redo size={16} />
+                        <span className="hidden md:inline">Refazer</span>
+                    </button>
+
                     <button
                         onClick={handleAddSection}
                         className="hidden lg:flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition text-sm font-medium"

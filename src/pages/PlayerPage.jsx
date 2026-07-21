@@ -1688,8 +1688,14 @@ export function PlayerPage() {
                             </div>
                         </div>
 
-                        {/* 4. Tab Font Size (Last item with distinct Amber Accent Theme) */}
-                        <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/20">
+                        {/* 4. Tab Font Size (Only visible smoothly when displayMode !== 'no_tabs') */}
+                        <div className={`
+                            transition-all duration-300 ease-in-out transform origin-top overflow-hidden
+                            ${displayMode !== 'no_tabs' 
+                                ? 'opacity-100 max-h-36 scale-y-100 mt-4 p-3 rounded-xl bg-amber-500/5 border border-amber-500/20' 
+                                : 'opacity-0 max-h-0 scale-y-95 mt-0 p-0 border-0 pointer-events-none'
+                            }
+                        `}>
                             <div className="flex items-center justify-between mb-1.5">
                                 <label className="text-xs text-amber-400/90 uppercase font-bold tracking-wider flex items-center gap-2" title="0 = Automático (70% do texto)">
                                     <Type size={12} className="italic" /> Tam. Tablatura (0 = Auto)

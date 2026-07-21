@@ -44,13 +44,67 @@ export function PlayerPage() {
     const [song, setSong] = useState(location.state?.song || null);
     const [prevSongId, setPrevSongId] = useState(songId);
 
-    // Synchronously sync song state during render on songId change
+    // Synchronously sync song state & visual preferences during render on songId change
     if (songId !== prevSongId) {
         setPrevSongId(songId);
         const incomingSong = location.state?.song?.content ? location.state.song : (location.state?.song?.song?.content ? location.state.song.song : null);
+        const targetSong = incomingSong || song;
         if (incomingSong) {
             setSong(incomingSong);
         }
+
+        // Synchronously calculate and set all visual preferences from cache
+        const globalPrefs = getUserPreferencesSync(user?.id);
+        const songPrefs = getUserSongPreferenceSync(songId, user?.id);
+        const liveSetlistTransp = getSetlistItemTranspositionSync(playlistItemId);
+
+        const defaultMode = globalPrefs?.default_tone_mode || 'original';
+        const personalTransp = (songPrefs?.transposition !== undefined && songPrefs?.transposition !== null) ? songPrefs.transposition : 0;
+        const churchTransp = liveSetlistTransp !== null 
+            ? liveSetlistTransp 
+            : (initialTransposition !== undefined ? initialTransposition : 0);
+
+        const songFontSize = isMobile ? songPrefs?.mobile_font_size : (isTablet ? songPrefs?.tablet_font_size : songPrefs?.desktop_font_size);
+        const songTabFontSize = isMobile ? songPrefs?.mobile_tab_font_size : (isTablet ? songPrefs?.tablet_tab_font_size : songPrefs?.desktop_tab_font_size);
+        const songLineSpacing = isMobile ? songPrefs?.mobile_line_spacing : (isTablet ? songPrefs?.tablet_line_spacing : songPrefs?.desktop_line_spacing);
+        const songScrollSpeed = isMobile ? songPrefs?.mobile_scroll_speed : (isTablet ? songPrefs?.tablet_scroll_speed : songPrefs?.desktop_scroll_speed);
+        const songLetterSpacing = isMobile ? songPrefs?.mobile_letter_spacing : (isTablet ? songPrefs?.tablet_letter_spacing : songPrefs?.desktop_letter_spacing);
+
+        const finalFontSize = songFontSize || targetSong?.fontSize || currentPlayerPreferences?.fontSize || globalPrefs?.default_font_size || (isTablet ? 20 : 16);
+        const finalTabFontSize = songTabFontSize || targetSong?.tabFontSize || (isTablet ? 14 : 0);
+        const finalLineSpacing = songLineSpacing || targetSong?.lineSpacing || currentPlayerPreferences?.lineSpacing || globalPrefs?.default_line_spacing || 0.8;
+        const finalScrollSpeed = songScrollSpeed || currentPlayerPreferences?.scrollSpeed || globalPrefs?.default_scroll_speed || (isTablet ? 12 : 5);
+        const finalLetterSpacing = songLetterSpacing || currentPlayerPreferences?.letterSpacing || globalPrefs?.default_letter_spacing || 0;
+        const finalDisplayMode = songPrefs?.display_mode || globalPrefs?.default_display_mode || 'full';
+        const finalIsAutoSpeed = songPrefs?.is_auto_speed ?? globalPrefs?.default_magic_speed_enabled ?? false;
+
+        let targetTransp = 0;
+        let targetTab = 'original';
+        if (playlistItemId && context?.type === 'setlist') {
+            targetTab = 'church';
+            targetTransp = churchTransp;
+        } else if (defaultMode === 'personal' || defaultMode === 'my_key') {
+            targetTab = 'personal';
+            targetTransp = personalTransp;
+        } else if (defaultMode === 'church') {
+            targetTab = 'church';
+            targetTransp = churchTransp;
+        } else {
+            targetTab = 'original';
+            targetTransp = 0;
+        }
+
+        setFontSize(finalFontSize);
+        setTabFontSize(finalTabFontSize);
+        setLineSpacing(finalLineSpacing);
+        setScrollSpeed(finalScrollSpeed);
+        setLetterSpacing(finalLetterSpacing);
+        setDisplayMode(finalDisplayMode);
+        setIsAutoSpeedActive(finalIsAutoSpeed);
+        setSavedTransposition(personalTransp);
+        setChurchTransposition(churchTransp);
+        setActiveTab(targetTab);
+        setTransposition(targetTransp);
     }
 
     // Live Session Hook & Data

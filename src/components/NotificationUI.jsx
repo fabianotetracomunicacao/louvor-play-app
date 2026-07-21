@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, Check, AlertCircle, Info, AlertTriangle } from 'lucide-react';
+import { X, Check, AlertCircle, Info, AlertTriangle, Loader2 } from 'lucide-react';
 
 import { useNavigate } from 'react-router-dom';
 
@@ -76,7 +76,22 @@ export const ToastContainer = ({ toasts, removeToast }) => {
 };
 
 export const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel, confirmText = 'Confirmar', cancelText = 'Cancelar', type = 'danger' }) => {
+    const [isProcessing, setIsProcessing] = useState(false);
+
+    useEffect(() => {
+        if (isOpen) setIsProcessing(false);
+    }, [isOpen]);
+
     if (!isOpen) return null;
+
+    const handleConfirm = async () => {
+        setIsProcessing(true);
+        try {
+            await onConfirm();
+        } finally {
+            // IsProcessing will be reset when modal opens again
+        }
+    };
 
     return (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -85,7 +100,10 @@ export const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel, conf
                 role="dialog"
                 aria-modal="true"
             >
-                <div className="p-6">
+                <div className="flex flex-col items-center pt-8 pb-2">
+                    <img src="/logo_official.png" alt="LouvorPlay" className="h-10 object-contain mb-2" />
+                </div>
+                <div className="px-6 pb-6 text-center">
                     <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{title}</h3>
                     <p className="text-slate-600 dark:text-slate-300">{message}</p>
                 </div>
@@ -93,19 +111,23 @@ export const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel, conf
                 <div className="bg-slate-50 dark:bg-slate-800/50 p-4 flex justify-end gap-3 border-t border-slate-200 dark:border-slate-800">
                     <button
                         onClick={onCancel}
-                        className="px-4 py-2 font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition"
+                        disabled={isProcessing}
+                        className="px-4 py-2 font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition disabled:opacity-50"
                     >
                         {cancelText}
                     </button>
                     <button
-                        onClick={onConfirm}
+                        onClick={handleConfirm}
+                        disabled={isProcessing}
                         className={`
-                            px-4 py-2 font-bold text-white rounded-lg transition shadow-md
+                            px-4 py-2 font-bold text-white rounded-lg transition shadow-md flex items-center justify-center gap-2 min-w-[130px]
                             ${type === 'danger'
                                 ? 'bg-red-600 hover:bg-red-700 shadow-red-500/20'
                                 : 'bg-purple-600 hover:bg-purple-700 shadow-purple-500/20'}
+                            ${isProcessing ? 'opacity-70 cursor-not-allowed' : ''}
                         `}
                     >
+                        {isProcessing && <Loader2 size={16} className="animate-spin" />}
                         {confirmText}
                     </button>
                 </div>

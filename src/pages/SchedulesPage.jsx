@@ -3,6 +3,7 @@ import { Calendar, Clock, Music, ArrowRight, User, List, ChevronRight, Play } fr
 import { useNavigate } from 'react-router-dom';
 import { getMySchedules } from '../utils/storage';
 import { useNotification } from '../contexts/NotificationContext';
+import { LiquidLoader } from '../components/LiquidLoader';
 
 export function SchedulesPage() {
     const [schedules, setSchedules] = useState([]);
@@ -78,12 +79,7 @@ export function SchedulesPage() {
     };
 
     if (isLoading) {
-        return (
-            <div className="flex items-center justify-center p-20 text-slate-500">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mr-2"></div>
-                Carregando suas escalas...
-            </div>
-        );
+        return <LiquidLoader fullScreen={true} />;
     }
 
     const RenderScaleItem = ({ item }) => (

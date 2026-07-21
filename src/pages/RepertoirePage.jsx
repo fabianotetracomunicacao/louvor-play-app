@@ -5,6 +5,7 @@ import { getLikedSongs, getUserEdits, deleteSong, searchSongs, getSongs, getMusi
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { useData } from '../contexts/DataContext';
+import { LiquidLoader } from '../components/LiquidLoader';
 
 export function RepertoirePage() {
     const { isEditor, user, isAdmin } = useAuth();
@@ -546,10 +547,7 @@ export function RepertoirePage() {
             {/* Content List */}
             <div className="space-y-1">
                 {isLoading ? (
-                    <div className="flex flex-col items-center justify-center py-12 text-slate-500">
-                        <Loader2 className="animate-spin mb-2" size={24} />
-                        <span>Carregando sua biblioteca...</span>
-                    </div>
+                    <LiquidLoader />
                 ) : (
                     <>
                         {/* LOCAL SYSTEM RESULTS */}

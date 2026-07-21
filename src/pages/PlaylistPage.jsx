@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams, Link, useParams, useLocation } from 'reac
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { useNotification } from '../contexts/NotificationContext';
+import { LiquidLoader } from '../components/LiquidLoader';
 import { supabase } from '../supabaseClient';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import {
@@ -2154,10 +2155,7 @@ export function PlaylistPage() {
                         </button>
                     </>
                 ) : (
-                    <>
-                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600 mb-2"></div>
-                        <p className="text-slate-500">Carregando playlist...</p>
-                    </>
+                    <LiquidLoader fullScreen={true} />
                 )}
             </div>
         );
@@ -2204,12 +2202,7 @@ export function PlaylistPage() {
                     <div className="space-y-8 pb-10">
                         {/* Loading Indicator */}
                         {isLoadingPlaylists && myPlaylists.length === 0 ? (
-                            <div className="text-center py-20">
-                                <div className="inline-flex items-center gap-3 text-slate-500">
-                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-                                    <span className="text-lg">Carregando playlists...</span>
-                                </div>
-                            </div>
+                            <LiquidLoader />
                         ) : (
                             <>
                                 {/* 1. Playlists Privadas (Owner & Private) */}

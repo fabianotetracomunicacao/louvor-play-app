@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getAppSetting } from '../utils/storage';
 import { MaintenancePage } from '../pages/MaintenancePage';
 import { useLocation } from 'react-router-dom';
+import { LiquidLoader } from './LiquidLoader';
 
 export function MaintenanceGuard({ children }) {
     const { isSuperAdmin, isAdmin } = useAuth(); // Dependendo de como a regra de negocio funciona, pode ser só isSuperAdmin
@@ -30,7 +31,7 @@ export function MaintenanceGuard({ children }) {
     }, []);
 
     if (loading) {
-        return <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">Carregando...</div>;
+        return <LiquidLoader fullScreen={true} />;
     }
 
     // Rotas liberadas mesmo em manutenção (Login, Atualizar Senha, Confirmar Email)

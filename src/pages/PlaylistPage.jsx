@@ -869,7 +869,14 @@ export function PlaylistPage() {
         
         await confirmAction({
             title: 'Remover da Playlist',
-            message: 'Deseja remover esta música da playlist? \n\n(Fique tranquilo, ela não será excluída do sistema, apenas desta lista).',
+            message: (
+                <>
+                    Deseja remover esta música da playlist?
+                    <span className="text-sm opacity-80 mt-2 block">
+                        (Fique tranquilo, ela não será excluída do sistema, apenas desta lista).
+                    </span>
+                </>
+            ),
             confirmText: 'Sim, remover',
             cancelText: 'Cancelar',
             type: 'danger',

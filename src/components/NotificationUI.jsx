@@ -105,7 +105,7 @@ export const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel, conf
                 </div>
                 <div className="px-6 pb-6 text-center">
                     <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{title}</h3>
-                    <p className="text-slate-600 dark:text-slate-300">{message}</p>
+                    <div className="text-slate-600 dark:text-slate-300">{message}</div>
                 </div>
 
                 <div className="bg-slate-50 dark:bg-slate-800/50 p-4 flex justify-end gap-3 border-t border-slate-200 dark:border-slate-800">

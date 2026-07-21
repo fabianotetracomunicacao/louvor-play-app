@@ -1561,17 +1561,33 @@ export function PlayerPage() {
                         )}
 
 
-                        {/* Font Size */}
-                        <div className="mb-6">
-                            <label className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-2 block flex items-center gap-2">
-                                <Type size={12} /> Tamanho (pt)
-                            </label>
-                            <div className="flex items-center gap-3">
+                        {/* 1. Font Size */}
+                        <div className="mb-5">
+                            <div className="flex items-center justify-between mb-1.5">
+                                <label className="text-xs text-slate-400 uppercase font-bold tracking-wider flex items-center gap-2">
+                                    <Type size={12} /> Tamanho (pt)
+                                </label>
+                                <span className="font-mono text-xs text-purple-400 font-bold">
+                                    {viewMode === 'pages' ? printFontSize : fontSize}pt
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (viewMode === 'pages') setPrintFontSize(prev => Math.max(8, prev - 1));
+                                        else setFontSize(prev => Math.max(8, prev - 1));
+                                    }}
+                                    className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 border border-slate-700 flex items-center justify-center font-bold text-sm shrink-0 transition"
+                                    title="Diminuir tamanho"
+                                >
+                                    <Minus size={14} />
+                                </button>
                                 <input
                                     type="range"
                                     min="8"
                                     max="48"
-                                    step="1" // DB expects Integer, so step 1
+                                    step="1"
                                     value={viewMode === 'pages' ? printFontSize : fontSize}
                                     onChange={(e) => {
                                         const val = parseFloat(e.target.value);
@@ -1580,35 +1596,39 @@ export function PlayerPage() {
                                     }}
                                     className="flex-1 accent-purple-500 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
                                 />
-                                <span className="w-8 text-right font-mono text-sm">{viewMode === 'pages' ? printFontSize : fontSize}pt</span>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (viewMode === 'pages') setPrintFontSize(prev => Math.min(48, prev + 1));
+                                        else setFontSize(prev => Math.min(48, prev + 1));
+                                    }}
+                                    className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 border border-slate-700 flex items-center justify-center font-bold text-sm shrink-0 transition"
+                                    title="Aumentar tamanho"
+                                >
+                                    <Plus size={14} />
+                                </button>
                             </div>
                         </div>
 
-                        {/* Tab Font Size */}
-                        <div className="mb-6">
-                            <label className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-2 block flex items-center gap-2" title="0 = Automático (70% do texto)">
-                                <Type size={10} className="italic" /> Tam. Tablatura (0 = Auto)
-                            </label>
-                            <div className="flex items-center gap-3">
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="32"
-                                    step="1"
-                                    value={tabFontSize || 0}
-                                    onChange={(e) => setTabFontSize(parseFloat(e.target.value))}
-                                    className="flex-1 accent-purple-500 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-                                />
-                                <span className="w-8 text-right font-mono text-sm">{tabFontSize || 'A'}pt</span>
+                        {/* 2. Line Spacing */}
+                        <div className="mb-5">
+                            <div className="flex items-center justify-between mb-1.5">
+                                <label className="text-xs text-slate-400 uppercase font-bold tracking-wider flex items-center gap-2">
+                                    <AlignJustify size={12} /> Espaçamento
+                                </label>
+                                <span className="font-mono text-xs text-purple-400 font-bold">
+                                    {lineSpacing.toFixed(1)}
+                                </span>
                             </div>
-                        </div>
-
-                        {/* Line Spacing */}
-                        <div>
-                            <label className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-2 block flex items-center gap-2">
-                                <AlignJustify size={12} /> Espaçamento
-                            </label>
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setLineSpacing(prev => Math.max(0.5, parseFloat((prev - 0.1).toFixed(1))))}
+                                    className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 border border-slate-700 flex items-center justify-center font-bold text-sm shrink-0 transition"
+                                    title="Diminuir espaçamento"
+                                >
+                                    <Minus size={14} />
+                                </button>
                                 <input
                                     type="range"
                                     min="0.5"
@@ -1618,16 +1638,36 @@ export function PlayerPage() {
                                     onChange={(e) => setLineSpacing(parseFloat(e.target.value))}
                                     className="flex-1 accent-purple-500 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
                                 />
-                                <span className="w-8 text-right font-mono text-sm">{lineSpacing.toFixed(1)}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => setLineSpacing(prev => Math.min(3.0, parseFloat((prev + 0.1).toFixed(1))))}
+                                    className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 border border-slate-700 flex items-center justify-center font-bold text-sm shrink-0 transition"
+                                    title="Aumentar espaçamento"
+                                >
+                                    <Plus size={14} />
+                                </button>
                             </div>
                         </div>
 
-                        {/* Letter Spacing */}
-                        <div>
-                            <label className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-2 block flex items-center gap-2 mt-4">
-                                <AlignJustify size={12} /> Espaçamento Letras
-                            </label>
-                            <div className="flex items-center gap-3">
+                        {/* 3. Letter Spacing */}
+                        <div className="mb-5">
+                            <div className="flex items-center justify-between mb-1.5">
+                                <label className="text-xs text-slate-400 uppercase font-bold tracking-wider flex items-center gap-2">
+                                    <AlignJustify size={12} /> Espaçamento Letras
+                                </label>
+                                <span className="font-mono text-xs text-purple-400 font-bold">
+                                    {letterSpacing}px
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setLetterSpacing(prev => Math.max(-2, prev - 0.5))}
+                                    className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 border border-slate-700 flex items-center justify-center font-bold text-sm shrink-0 transition"
+                                    title="Diminuir espaçamento de letras"
+                                >
+                                    <Minus size={14} />
+                                </button>
                                 <input
                                     type="range"
                                     min="-2"
@@ -1637,7 +1677,53 @@ export function PlayerPage() {
                                     onChange={(e) => setLetterSpacing(parseFloat(e.target.value))}
                                     className="flex-1 accent-purple-500 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
                                 />
-                                <span className="w-8 text-right font-mono text-sm">{letterSpacing}px</span>
+                                <button
+                                    type="button"
+                                    onClick={() => setLetterSpacing(prev => Math.min(4, prev + 0.5))}
+                                    className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 border border-slate-700 flex items-center justify-center font-bold text-sm shrink-0 transition"
+                                    title="Aumentar espaçamento de letras"
+                                >
+                                    <Plus size={14} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* 4. Tab Font Size (Last item with distinct Amber Accent Theme) */}
+                        <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/20">
+                            <div className="flex items-center justify-between mb-1.5">
+                                <label className="text-xs text-amber-400/90 uppercase font-bold tracking-wider flex items-center gap-2" title="0 = Automático (70% do texto)">
+                                    <Type size={12} className="italic" /> Tam. Tablatura (0 = Auto)
+                                </label>
+                                <span className="font-mono text-xs text-amber-400 font-bold">
+                                    {tabFontSize ? `${tabFontSize}pt` : 'Auto (0)'}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setTabFontSize(prev => Math.max(0, (prev || 0) - 1))}
+                                    className="w-7 h-7 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 active:scale-95 text-amber-400 border border-amber-500/30 flex items-center justify-center font-bold text-sm shrink-0 transition"
+                                    title="Diminuir tamanho da tablatura"
+                                >
+                                    <Minus size={14} />
+                                </button>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="32"
+                                    step="1"
+                                    value={tabFontSize || 0}
+                                    onChange={(e) => setTabFontSize(parseFloat(e.target.value))}
+                                    className="flex-1 accent-amber-400 h-2 bg-slate-700/80 rounded-lg appearance-none cursor-pointer"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setTabFontSize(prev => Math.min(32, (prev || 0) + 1))}
+                                    className="w-7 h-7 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 active:scale-95 text-amber-400 border border-amber-500/30 flex items-center justify-center font-bold text-sm shrink-0 transition"
+                                    title="Aumentar tamanho da tablatura"
+                                >
+                                    <Plus size={14} />
+                                </button>
                             </div>
                         </div>
 

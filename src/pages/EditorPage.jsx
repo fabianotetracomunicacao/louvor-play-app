@@ -20,7 +20,7 @@ import { parseImporter, exportToVisual, isChordLine, isTabLine } from '../utils/
 import { supabase } from '../supabaseClient';
 
 export function EditorPage() {
-    const { isEditor, user } = useAuth();
+    const { isEditor, user, isChurchAdmin, isSuperAdmin } = useAuth();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const { id: paramId } = useParams();
@@ -814,18 +814,20 @@ export function EditorPage() {
                                 <Eye size={18} className="md:w-5 md:h-5" />
                             </button>
                         )}
-                        <button
-                            onClick={() => {
-                                navigate(`/visual-editor${songId ? `?id=${songId}` : ''}`, { 
-                                    state: { content: getContentForSave(), title, artist } 
-                                });
-                            }}
-                            className="flex items-center gap-2 px-3 py-2 md:px-4 md:py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition shadow-lg shadow-purple-500/20 text-xs md:text-base"
-                            title="Experimentar Novo Editor Visual (WYSIWYG)"
-                        >
-                            <Sparkles size={16} className="md:w-5 md:h-5 animate-pulse" />
-                            <span className="text-xs font-bold hidden sm:inline">Editor Pro</span>
-                        </button>
+                        {(isSuperAdmin || isChurchAdmin) && (
+                            <button
+                                onClick={() => {
+                                    navigate(`/visual-editor${songId ? `?id=${songId}` : ''}`, { 
+                                        state: { content: getContentForSave(), title, artist } 
+                                    });
+                                }}
+                                className="flex items-center gap-2 px-3 py-2 md:px-4 md:py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition shadow-lg shadow-purple-500/20 text-xs md:text-base"
+                                title="Experimentar Novo Editor Visual (WYSIWYG)"
+                            >
+                                <Sparkles size={16} className="md:w-5 md:h-5 animate-pulse" />
+                                <span className="text-xs font-bold hidden sm:inline">Editor Pro</span>
+                            </button>
+                        )}
 
                         <button
                             onClick={() => setIsSearchModalOpen(true)}

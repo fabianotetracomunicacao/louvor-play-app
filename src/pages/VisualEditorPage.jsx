@@ -213,12 +213,6 @@ export function VisualEditorPage() {
                 
                 <div className="flex items-center gap-2">
                     <button
-                        onClick={handleLoadSample}
-                        className="hidden md:flex items-center gap-2 px-3 py-2 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition text-xs font-bold uppercase tracking-wider border border-purple-200 dark:border-purple-800"
-                    >
-                        <Music size={14} /> Carregar Exemplo
-                    </button>
-                    <button
                         onClick={handleAddSection}
                         className="hidden lg:flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition text-sm font-medium"
                     >

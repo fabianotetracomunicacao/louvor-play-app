@@ -653,7 +653,11 @@ export function PlayerPage() {
                 return;
             }
 
-            setIsReady(false); // Reset total state
+            // Only reset isReady to false if song data is not already cached in memory
+            const hasInMemorySong = !!(location.state?.song?.content || location.state?.song?.song?.content);
+            if (!hasInMemorySong) {
+                setIsReady(false);
+            }
             try {
                 // Phase 1: Get Song Data
                 let currentSongData = null;

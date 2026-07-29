@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient';
+import bibleData from '../assets/bible-nvi.json';
 
 export class DiagnosticsService {
   /**
@@ -16,7 +17,7 @@ export class DiagnosticsService {
     const authResult = await this.testAuth();
     results.push(authResult);
 
-    // 3. Diagnóstico de APIs Externas (Bíblia)
+    // 3. Diagnóstico do conteúdo bíblico usado pelo projetor
     const apiResult = await this.testExternalAPIs();
     results.push(apiResult);
 
@@ -122,45 +123,32 @@ export class DiagnosticsService {
   static async testExternalAPIs() {
     const start = performance.now();
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-      const response = await fetch('/api/bible/verses/nvi/sl/23/1', {
-        signal: controller.signal
-      }).catch(() => null);
-
-      clearTimeout(timeoutId);
+      const psalms = bibleData.find(book => book.abbrev === 'sl');
+      const referenceVerse = psalms?.chapters?.[22]?.[0];
 
       const latencyMs = Math.round(performance.now() - start);
 
-      if (response && response.ok) {
-        return {
-          id: 'external_api',
-          name: 'APIs Externas (Serviço de Bíblia)',
-          category: 'API',
-          status: 'ok',
-          latencyMs,
-          details: 'API de consulta bíblica respondendo normalmente.'
-        };
-      } else {
-        return {
-          id: 'external_api',
-          name: 'APIs Externas (Serviço de Bíblia)',
-          category: 'API',
-          status: 'warning',
-          latencyMs,
-          details: 'API de Bíblia respondeu com instabilidade ou fallback ativo.'
-        };
+      if (typeof referenceVerse !== 'string' || !referenceVerse.trim()) {
+        throw new Error('Salmos 23:1 não foi encontrado no conteúdo NVI local');
       }
+
+      return {
+        id: 'external_api',
+        name: 'Serviço de Bíblia (NVI local)',
+        category: 'Content',
+        status: 'ok',
+        latencyMs,
+        details: 'Conteúdo bíblico local carregado e Salmos 23:1 disponível para projeção.'
+      };
     } catch (err) {
       const latencyMs = Math.round(performance.now() - start);
       return {
         id: 'external_api',
-        name: 'APIs Externas (Serviço de Bíblia)',
-        category: 'API',
-        status: 'warning',
+        name: 'Serviço de Bíblia (NVI local)',
+        category: 'Content',
+        status: 'error',
         latencyMs,
-        details: `Tempo limite de conexão excedido: ${err.message}`
+        details: `Erro ao carregar o conteúdo bíblico local: ${err.message}`
       };
     }
   }

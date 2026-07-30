@@ -321,10 +321,8 @@ Deno.test("conflito unico resolvido pela RPC atomica vira skipped", async () => 
   assertEquals(result.status, "skipped");
 });
 
-Deno.test("bloqueio encapsulado em 502 pausa por 10 minutos", async () => {
+Deno.test("bloqueio em item de musica marca item como falha para continuar a fila", async () => {
   let finished = false;
-  let pauseReason = "";
-  let pauseAt = "";
   const result = await processClaim(
     { ...fixtureClaim, attempts: 2 },
     workerDeps({
@@ -337,6 +335,24 @@ Deno.test("bloqueio encapsulado em 502 pausa por 10 minutos", async () => {
         finished = true;
         return { status: "failed" };
       },
+    }),
+  );
+
+  assertEquals(result.status, "failed");
+  assertEquals(finished, true);
+});
+
+Deno.test("bloqueio na descoberta de catalogo pausa por 10 minutos", async () => {
+  let pauseReason = "";
+  let pauseAt = "";
+  const result = await processClaim(
+    { ...fixtureClaim, needsDiscovery: true, itemId: null, attempts: 2 },
+    workerDeps({
+      fetchCatalog: async () => ({
+        status: 502,
+        body: '{"error":"Forbidden","upstream_status":403}',
+        data: null,
+      }),
       pause: async (_claim, reason, nextRunAt) => {
         pauseReason = reason;
         pauseAt = nextRunAt;
@@ -346,7 +362,6 @@ Deno.test("bloqueio encapsulado em 502 pausa por 10 minutos", async () => {
   );
 
   assertEquals(result.status, "paused");
-  assertEquals(finished, false);
   assertMatch(pauseReason, /502/);
   assertEquals(pauseAt, "2026-07-28T12:10:00.000Z");
 });

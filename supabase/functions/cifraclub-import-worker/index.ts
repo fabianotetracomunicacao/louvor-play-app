@@ -389,11 +389,9 @@ export async function processClaim(
 
   const classification = classifyUpstream(response.status, response.body);
   if (classification === "blocked") {
-    return await deps.pause(
-      claim,
-      `Cifra blocked with HTTP ${response.status}`,
-      blockedRunAt(deps.now()).toISOString(),
-    );
+    const reason = `Cifra blocked with HTTP ${response.status}`;
+    await finish(claim, deps, "failed", null, reason);
+    return { status: "failed", reason };
   }
   if (classification === "temporary") {
     return await deps.retryItem(

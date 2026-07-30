@@ -3,7 +3,7 @@
 alter table public.cifraclub_import_jobs
   add column if not exists queue_position integer not null default 0;
 
--- Function to pause a job manually
+-- Function to pause a job manually from admin page
 create or replace function public.pause_cifraclub_import(
   p_job_id uuid
 )
@@ -14,15 +14,20 @@ set search_path = public
 as $$
 declare
   paused_job public.cifraclub_import_jobs;
+  max_pos integer;
 begin
   if not public.is_super_admin() then
     raise exception 'forbidden';
   end if;
 
+  select coalesce(max(queue_position), 0) + 1 into max_pos
+  from public.cifraclub_import_jobs;
+
   update public.cifraclub_import_jobs
   set status = 'paused',
       lease_until = null,
       claim_token = null,
+      queue_position = max_pos,
       updated_at = now()
   where id = p_job_id
     and status in ('pending', 'discovering', 'processing')
@@ -46,6 +51,82 @@ $$;
 
 revoke all on function public.pause_cifraclub_import(uuid) from public;
 grant execute on function public.pause_cifraclub_import(uuid) to authenticated;
+
+-- Function to pause a job automatically on HTTP 403 / 429 block and push to end of queue
+create or replace function public.pause_cifraclub_import_job(
+  p_job_id uuid,
+  p_item_id uuid,
+  p_claim_token uuid,
+  p_error text,
+  p_next_run_at timestamptz
+)
+returns public.cifraclub_import_jobs
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  paused_job public.cifraclub_import_jobs;
+  released_item_id uuid;
+  max_pos integer;
+begin
+  if p_claim_token is null or p_next_run_at is null then
+    raise exception 'claim token and next run are required';
+  end if;
+
+  if p_item_id is not null then
+    update public.cifraclub_import_items
+    set status = 'pending',
+        lease_until = null,
+        claim_token = null,
+        last_error = nullif(btrim(coalesce(p_error, '')), ''),
+        updated_at = now()
+    where id = p_item_id
+      and job_id = p_job_id
+      and status = 'processing'
+      and claim_token = p_claim_token
+      and lease_until >= now()
+    returning id into released_item_id;
+
+    if released_item_id is null then
+      raise exception 'item is not the current claim';
+    end if;
+  end if;
+
+  -- Move the blocked job (403/429) to the end of the queue
+  select coalesce(max(queue_position), 0) + 1 into max_pos
+  from public.cifraclub_import_jobs;
+
+  update public.cifraclub_import_jobs
+  set status = 'paused',
+      lease_until = null,
+      claim_token = null,
+      blocked_count = blocked_count + 1,
+      queue_position = max_pos,
+      next_run_at = p_next_run_at,
+      last_error = nullif(btrim(coalesce(p_error, '')), ''),
+      updated_at = now()
+  where id = p_job_id
+    and (
+      released_item_id is not null
+      or (
+        status = 'discovering'
+        and claim_token = p_claim_token
+        and lease_until >= now()
+      )
+    )
+  returning * into paused_job;
+
+  if paused_job.id is null then
+    raise exception 'job is not the current claim';
+  end if;
+
+  return paused_job;
+end;
+$$;
+
+revoke all on function public.pause_cifraclub_import_job(uuid, uuid, uuid, text, timestamptz) from public;
+grant execute on function public.pause_cifraclub_import_job(uuid, uuid, uuid, text, timestamptz) to service_role;
 
 -- Function to reorder jobs in the queue
 create or replace function public.reorder_cifraclub_import_jobs(
@@ -79,7 +160,7 @@ $$;
 revoke all on function public.reorder_cifraclub_import_jobs(uuid[]) from public;
 grant execute on function public.reorder_cifraclub_import_jobs(uuid[]) to authenticated;
 
--- Update claim_cifraclub_import_work to respect queue_position order
+-- Update claim_cifraclub_import_work to respect queue_position order and skip jobs waiting for cooldown
 create or replace function public.claim_cifraclub_import_work(
   p_lease_seconds integer default 120
 )
@@ -147,6 +228,7 @@ begin
     return;
   end if;
 
+  -- Pick the next job that is eligible and whose next_run_at cooldown has passed
   select job.* into selected_job
   from public.cifraclub_import_jobs as job
   where (
@@ -158,15 +240,12 @@ begin
       )
     )
     and (job.lease_until is null or job.lease_until < now())
+    and job.next_run_at <= now()
   order by job.queue_position asc, job.created_at asc, job.id asc
   for update
   limit 1;
 
   if selected_job.id is null then
-    return;
-  end if;
-
-  if selected_job.next_run_at > now() then
     return;
   end if;
 

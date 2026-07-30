@@ -113,12 +113,20 @@ export function cancelImportJob(id) {
     return callRpc('cancel_cifraclub_import', { p_job_id: id });
 }
 
+export function pauseImportJob(id) {
+    return callRpc('pause_cifraclub_import', { p_job_id: id });
+}
+
 export function retryImportFailures(id) {
     return callRpc('retry_cifraclub_import_failures', { p_job_id: id });
 }
 
 export function resumeImportJob(id) {
     return callRpc('resume_cifraclub_import', { p_job_id: id });
+}
+
+export function reorderImportJobs(jobIds) {
+    return callRpc('reorder_cifraclub_import_jobs', { p_job_ids: jobIds });
 }
 
 export function subscribeToImportJobs(callback) {

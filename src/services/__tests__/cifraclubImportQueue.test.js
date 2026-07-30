@@ -16,12 +16,15 @@ import {
     enqueueArtist,
     enqueueArtistSelection,
     listImportJobs,
+    pauseImportJob,
     previewArtistCatalog,
+    reorderImportJobs,
     resumeImportJob,
     retryImportFailures,
     searchArtists,
     subscribeToImportJobs,
 } from '../cifraclubImportQueue';
+
 
 describe('cifraclub import queue client', () => {
     beforeEach(() => {
@@ -153,6 +156,14 @@ describe('cifraclub import queue client', () => {
         expect(supabase.rpc).toHaveBeenCalledWith('cancel_cifraclub_import', { p_job_id: 'job-1' });
     });
 
+    it('pauses a job through the pause RPC', async () => {
+        supabase.rpc.mockResolvedValue({ data: { id: 'job-1', status: 'paused' }, error: null });
+
+        await pauseImportJob('job-1');
+
+        expect(supabase.rpc).toHaveBeenCalledWith('pause_cifraclub_import', { p_job_id: 'job-1' });
+    });
+
     it('retries failed job items through the retry RPC', async () => {
         supabase.rpc.mockResolvedValue({ data: { id: 'job-1' }, error: null });
 
@@ -168,6 +179,15 @@ describe('cifraclub import queue client', () => {
 
         expect(supabase.rpc).toHaveBeenCalledWith('resume_cifraclub_import', { p_job_id: 'job-1' });
     });
+
+    it('reorders queued jobs through the reorder RPC', async () => {
+        supabase.rpc.mockResolvedValue({ data: null, error: null });
+
+        await reorderImportJobs(['job-2', 'job-1']);
+
+        expect(supabase.rpc).toHaveBeenCalledWith('reorder_cifraclub_import_jobs', { p_job_ids: ['job-2', 'job-1'] });
+    });
+
 
     it('subscribes to job and item changes and removes the channel on cleanup', () => {
         const callback = vi.fn();

@@ -9,10 +9,13 @@ const queue = vi.hoisted(() => ({
     enqueueArtistSelection: vi.fn(),
     listImportJobs: vi.fn(),
     cancelImportJob: vi.fn(),
+    pauseImportJob: vi.fn(),
+    reorderImportJobs: vi.fn(),
     resumeImportJob: vi.fn(),
     retryImportFailures: vi.fn(),
     subscribeToImportJobs: vi.fn(),
 }));
+
 
 vi.mock('../../services/cifraclubImportQueue', () => queue);
 
@@ -166,10 +169,13 @@ describe('AdminCifraclubImportPage', () => {
         queue.enqueueArtist.mockResolvedValue({ id: 'new-job' });
         queue.enqueueArtistSelection.mockResolvedValue({ id: 'new-job' });
         queue.cancelImportJob.mockResolvedValue({ id: 'job-pending', status: 'cancelled' });
+        queue.pauseImportJob.mockResolvedValue({ id: 'job-processing', status: 'paused' });
+        queue.reorderImportJobs.mockResolvedValue();
         queue.resumeImportJob.mockResolvedValue({ id: 'job-paused-limit', status: 'processing' });
         queue.retryImportFailures.mockResolvedValue({ id: 'job-errors', status: 'pending' });
         queue.subscribeToImportJobs.mockReturnValue(vi.fn());
     });
+
 
     afterEach(() => {
         vi.useRealTimers();
@@ -442,6 +448,33 @@ describe('AdminCifraclubImportPage', () => {
             name: 'Retomar importação de Gabriela Rocha',
         })).not.toBeInTheDocument();
     });
+
+    it('allows pausing active jobs and reordering queued jobs', async () => {
+        render(<AdminCifraclubImportPage />);
+
+        const pauseButton = await screen.findByRole('button', {
+            name: 'Pausar importação de Fernandinho',
+        });
+        fireEvent.click(pauseButton);
+
+        await waitFor(() => {
+            expect(queue.pauseImportJob).toHaveBeenCalledWith('job-processing');
+        });
+
+        const moveDownButton = screen.getByRole('button', {
+            name: 'Mover importação de Fernandinho para baixo',
+        });
+        fireEvent.click(moveDownButton);
+
+        await waitFor(() => {
+            expect(queue.reorderImportJobs).toHaveBeenCalledWith([
+                'job-paused',
+                'job-processing',
+                'job-pending',
+            ]);
+        });
+    });
+
 
     it('cleans up realtime subscription and polling when unmounted', async () => {
         vi.useFakeTimers();

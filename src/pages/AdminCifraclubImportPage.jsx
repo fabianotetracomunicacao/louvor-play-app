@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+    ArrowDown,
+    ArrowUp,
     CheckCircle2,
     CirclePause,
     ListMusic,
@@ -11,7 +13,9 @@ import {
     cancelImportJob,
     enqueueArtistSelection,
     listImportJobs,
+    pauseImportJob,
     previewArtistCatalog,
+    reorderImportJobs,
     resumeImportJob,
     retryImportFailures,
     searchArtists,
@@ -77,11 +81,22 @@ function getCreatedAt(job) {
 }
 
 function sortJobsForDisplay(jobs) {
-    const queuedJobs = jobs.filter(isQueuedJob).sort((left, right) => getCreatedAt(left) - getCreatedAt(right));
+    const queuedJobs = jobs.filter(isQueuedJob).sort((left, right) => {
+        const posLeft = Number.isInteger(left.queue_position) && left.queue_position > 0
+            ? left.queue_position
+            : Infinity;
+        const posRight = Number.isInteger(right.queue_position) && right.queue_position > 0
+            ? right.queue_position
+            : Infinity;
+
+        if (posLeft !== posRight) return posLeft - posRight;
+        return getCreatedAt(left) - getCreatedAt(right);
+    });
     const historicalJobs = jobs.filter((job) => !isQueuedJob(job)).sort((left, right) => getCreatedAt(right) - getCreatedAt(left));
 
     return [...queuedJobs, ...historicalJobs];
 }
+
 
 function formatNextRunAt(nextRunAt) {
     const date = new Date(nextRunAt);
@@ -316,6 +331,64 @@ export function AdminCifraclubImportPage() {
         }
     };
 
+    const handlePause = async (job) => {
+        setActionJobId(job.id);
+        setQueueError('');
+
+        try {
+            await pauseImportJob(job.id);
+            await refreshJobs();
+        } catch (error) {
+            setQueueError(getErrorMessage(error, 'Não foi possível pausar a importação.'));
+        } finally {
+            setActionJobId(null);
+        }
+    };
+
+    const handleMoveUp = async (job) => {
+        const queuedJobs = displayedJobs.filter(isQueuedJob);
+        const index = queuedJobs.findIndex((j) => j.id === job.id);
+        if (index <= 0) return;
+
+        const newQueued = [...queuedJobs];
+        const [moved] = newQueued.splice(index, 1);
+        newQueued.splice(index - 1, 0, moved);
+
+        setActionJobId(job.id);
+        setQueueError('');
+
+        try {
+            await reorderImportJobs(newQueued.map((j) => j.id));
+            await refreshJobs();
+        } catch (error) {
+            setQueueError(getErrorMessage(error, 'Não foi possível reordenar a fila.'));
+        } finally {
+            setActionJobId(null);
+        }
+    };
+
+    const handleMoveDown = async (job) => {
+        const queuedJobs = displayedJobs.filter(isQueuedJob);
+        const index = queuedJobs.findIndex((j) => j.id === job.id);
+        if (index < 0 || index >= queuedJobs.length - 1) return;
+
+        const newQueued = [...queuedJobs];
+        const [moved] = newQueued.splice(index, 1);
+        newQueued.splice(index + 1, 0, moved);
+
+        setActionJobId(job.id);
+        setQueueError('');
+
+        try {
+            await reorderImportJobs(newQueued.map((j) => j.id));
+            await refreshJobs();
+        } catch (error) {
+            setQueueError(getErrorMessage(error, 'Não foi possível reordenar a fila.'));
+        } finally {
+            setActionJobId(null);
+        }
+    };
+
     return (
         <main className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 sm:px-6">
             <header className="flex flex-col gap-2 border-b border-slate-200 pb-4 dark:border-slate-800 sm:flex-row sm:items-end sm:justify-between">
@@ -422,12 +495,18 @@ export function AdminCifraclubImportPage() {
                             const isPending = job.status === 'pending';
                             const isQueued = isQueuedJob(job);
                             const isAutoPaused = isAutomaticallyPaused(job);
+                            const canPause = QUEUE_STATUSES.has(job.status);
                             const canRetry = job.status === 'completed_with_errors';
                             const canResume = job.status === 'paused' && !isAutoPaused;
                             const isActing = actionJobId === job.id;
                             const blockedRetryLimit = getBlockedRetryLimit(job);
                             const itemErrors = getItemErrors(job);
                             const lastActivityAt = getLastActivityAt(job);
+
+                            const queuedJobsList = displayedJobs.filter(isQueuedJob);
+                            const queuedIndex = queuedJobsList.findIndex((j) => j.id === job.id);
+                            const isFirstQueued = queuedIndex === 0;
+                            const isLastQueued = queuedIndex === queuedJobsList.length - 1;
 
                             return (
                                 <article key={job.id} className="border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
@@ -460,10 +539,47 @@ export function AdminCifraclubImportPage() {
                                         </div>
 
                                         <div className="flex shrink-0 items-center gap-2">
+                                            {isQueued && (
+                                                <>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => void handleMoveUp(job)}
+                                                        disabled={isActing || isFirstQueued}
+                                                        aria-label={`Mover importação de ${job.artist_name} para cima`}
+                                                        title={`Mover importação de ${job.artist_name} para cima`}
+                                                        className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
+                                                    >
+                                                        <ArrowUp size={16} aria-hidden="true" />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => void handleMoveDown(job)}
+                                                        disabled={isActing || isLastQueued}
+                                                        aria-label={`Mover importação de ${job.artist_name} para baixo`}
+                                                        title={`Mover importação de ${job.artist_name} para baixo`}
+                                                        className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
+                                                    >
+                                                        <ArrowDown size={16} aria-hidden="true" />
+                                                    </button>
+                                                </>
+                                            )}
+                                            {canPause && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => void handlePause(job)}
+                                                    disabled={isActing}
+                                                    aria-label={`Pausar importação de ${job.artist_name}`}
+                                                    title={`Pausar importação de ${job.artist_name}`}
+                                                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-amber-200 px-2.5 text-sm font-medium text-amber-800 transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-amber-900 dark:text-amber-300 dark:hover:bg-amber-950/40"
+                                                >
+                                                    <CirclePause size={16} aria-hidden="true" />
+                                                    Pausar
+                                                </button>
+                                            )}
                                             {isPending && (
                                                 <button
                                                     type="button"
-                                                    onClick={() => handleCancel(job)}
+                                                    onClick={() => void handleCancel(job)}
                                                     disabled={isActing}
                                                     aria-label={`Cancelar importação de ${job.artist_name}`}
                                                     title={`Cancelar importação de ${job.artist_name}`}
@@ -476,7 +592,7 @@ export function AdminCifraclubImportPage() {
                                             {canRetry && (
                                                 <button
                                                     type="button"
-                                                    onClick={() => handleRetry(job)}
+                                                    onClick={() => void handleRetry(job)}
                                                     disabled={isActing}
                                                     aria-label={`Tentar novamente ${job.artist_name}`}
                                                     title={`Tentar novamente ${job.artist_name}`}
@@ -489,7 +605,7 @@ export function AdminCifraclubImportPage() {
                                             {canResume && (
                                                 <button
                                                     type="button"
-                                                    onClick={() => handleResume(job)}
+                                                    onClick={() => void handleResume(job)}
                                                     disabled={isActing}
                                                     aria-label={`Retomar importação de ${job.artist_name}`}
                                                     title={`Retomar importação de ${job.artist_name}`}
@@ -501,6 +617,7 @@ export function AdminCifraclubImportPage() {
                                             )}
                                         </div>
                                     </div>
+
 
                                     <div className="mt-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                                         <div>

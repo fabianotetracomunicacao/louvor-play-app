@@ -298,7 +298,7 @@ async function finish(
     status,
     songId,
     error,
-    nextRunAt: nextRunAt(deps.now(), deps.random).toISOString(),
+    nextRunAt: new Date(deps.now().getTime() + 1000).toISOString(),
   });
 }
 
@@ -314,22 +314,15 @@ async function processDiscovery(
     return await deps.retryDiscovery(
       claim,
       reason,
-      retryRunAt(deps.now(), claim.attempts ?? 1, deps.random).toISOString(),
+      new Date(deps.now().getTime() + 1000).toISOString(),
     );
   }
   const classification = classifyUpstream(response.status, response.body);
-  if (classification === "blocked") {
-    return await deps.pause(
-      claim,
-      `Catalog blocked with HTTP ${response.status}`,
-      blockedRunAt(deps.now()).toISOString(),
-    );
-  }
-  if (classification === "temporary") {
+  if (classification === "blocked" || classification === "temporary") {
     return await deps.retryDiscovery(
       claim,
       `Catalog request failed with HTTP ${response.status}`,
-      retryRunAt(deps.now(), claim.attempts ?? 1, deps.random).toISOString(),
+      new Date(deps.now().getTime() + 1000).toISOString(),
     );
   }
   if (response.status < 200 || response.status >= 300) {

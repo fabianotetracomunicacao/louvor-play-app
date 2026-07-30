@@ -342,9 +342,9 @@ Deno.test("bloqueio em item de musica marca item como falha para continuar a fil
   assertEquals(finished, true);
 });
 
-Deno.test("bloqueio na descoberta de catalogo pausa por 10 minutos", async () => {
-  let pauseReason = "";
-  let pauseAt = "";
+Deno.test("bloqueio na descoberta de catalogo reprograma sem pausar por 10 minutos", async () => {
+  let retryReason = "";
+  let retryAt = "";
   const result = await processClaim(
     { ...fixtureClaim, needsDiscovery: true, itemId: null, attempts: 2 },
     workerDeps({
@@ -353,17 +353,17 @@ Deno.test("bloqueio na descoberta de catalogo pausa por 10 minutos", async () =>
         body: '{"error":"Forbidden","upstream_status":403}',
         data: null,
       }),
-      pause: async (_claim, reason, nextRunAt) => {
-        pauseReason = reason;
-        pauseAt = nextRunAt;
-        return { status: "paused", reason };
+      retryDiscovery: async (_claim, reason, nextRunAt) => {
+        retryReason = reason;
+        retryAt = nextRunAt;
+        return { status: "retrying", reason };
       },
     }),
   );
 
-  assertEquals(result.status, "paused");
-  assertMatch(pauseReason, /502/);
-  assertEquals(pauseAt, "2026-07-28T12:10:00.000Z");
+  assertEquals(result.status, "retrying");
+  assertMatch(retryReason, /502/);
+  assertEquals(retryAt, "2026-07-28T12:00:01.000Z");
 });
 
 Deno.test("503 reprograma o item sem contabilizar falha", async () => {

@@ -13,6 +13,7 @@ vi.mock('../../supabaseClient', () => ({ supabase }));
 
 import {
     cancelImportJob,
+    deleteImportJob,
     enqueueArtist,
     enqueueArtistSelection,
     listImportJobs,
@@ -186,6 +187,14 @@ describe('cifraclub import queue client', () => {
         await reorderImportJobs(['job-2', 'job-1']);
 
         expect(supabase.rpc).toHaveBeenCalledWith('reorder_cifraclub_import_jobs', { p_job_ids: ['job-2', 'job-1'] });
+    });
+
+    it('deletes an import job through the delete RPC', async () => {
+        supabase.rpc.mockResolvedValue({ data: null, error: null });
+
+        await deleteImportJob('job-1');
+
+        expect(supabase.rpc).toHaveBeenCalledWith('delete_cifraclub_import', { p_job_id: 'job-1' });
     });
 
 

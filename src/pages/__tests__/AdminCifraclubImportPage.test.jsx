@@ -9,6 +9,7 @@ const queue = vi.hoisted(() => ({
     enqueueArtistSelection: vi.fn(),
     listImportJobs: vi.fn(),
     cancelImportJob: vi.fn(),
+    deleteImportJob: vi.fn(),
     pauseImportJob: vi.fn(),
     reorderImportJobs: vi.fn(),
     resumeImportJob: vi.fn(),
@@ -305,8 +306,7 @@ describe('AdminCifraclubImportPage', () => {
         expect(within(processingJob).getByText('2 ignoradas')).toBeInTheDocument();
         expect(within(processingJob).getByText('1 falha')).toBeInTheDocument();
         expect(within(processingJob).getByText('Ordem 1')).toBeInTheDocument();
-        expect(screen.getAllByText('Pausada')).toHaveLength(2);
-        expect(screen.getByText('Cifra indisponível')).toBeInTheDocument();
+        expect(screen.getAllByText('Pausada')).toHaveLength(1);
         const pausedJob = screen.getByRole('heading', { name: 'Gabriela Rocha' }).closest('article');
         expect(within(pausedJob).getByText('4 de 20')).toBeInTheDocument();
         expect(within(pausedJob).getByText(/Nova tentativa automática: 30\/07\/2026/)).toBeInTheDocument();
@@ -315,6 +315,9 @@ describe('AdminCifraclubImportPage', () => {
         expect(within(pausedJob).getByText('HTTP 429 do provedor')).toBeInTheDocument();
         expect(within(pausedJob).getByText('Ordem 2')).toBeInTheDocument();
 
+        fireEvent.click(screen.getByRole('button', { name: /Concluídos/ }));
+
+        expect(screen.getByText('Cifra indisponível')).toBeInTheDocument();
         const failedJob = screen.getByRole('heading', { name: 'Diante do Trono' }).closest('article');
         expect(within(failedJob).getByText('Preciso de Ti')).toBeInTheDocument();
         expect(within(failedJob).getByText('3 tentativas')).toBeInTheDocument();
@@ -384,7 +387,7 @@ describe('AdminCifraclubImportPage', () => {
         act(() => onRealtimeChange());
 
         await act(async () => {
-            freshRefresh.resolve([{ ...jobs[4], artist_name: 'Estado recente', status: 'completed' }]);
+            freshRefresh.resolve([{ ...jobs[4], artist_name: 'Estado recente', status: 'pending' }]);
         });
         expect(await screen.findByRole('heading', { name: 'Estado recente' })).toBeInTheDocument();
 
@@ -395,7 +398,7 @@ describe('AdminCifraclubImportPage', () => {
         expect(screen.queryByRole('heading', { name: 'Estado antigo' })).not.toBeInTheDocument();
     });
 
-    it('shows queued jobs in FIFO order before reverse-chronological history', async () => {
+    it('shows queued jobs in FIFO order in queue tab and historical jobs in completed tab', async () => {
         render(<AdminCifraclubImportPage />);
 
         await screen.findByRole('heading', { name: 'Fernandinho' });
@@ -403,13 +406,21 @@ describe('AdminCifraclubImportPage', () => {
             'Fernandinho',
             'Gabriela Rocha',
             'Gabriel Guedes',
+        ]);
+
+        const completedTab = screen.getByRole('button', { name: /Concluídos/ });
+        fireEvent.click(completedTab);
+
+        expect(await screen.findByRole('heading', { name: 'Aline Barros' })).toBeInTheDocument();
+        expect(screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent)).toEqual([
             'Aline Barros',
             'Diante do Trono',
             'Voz da Verdade',
         ]);
     });
 
-    it('allows cancelling pending jobs, retrying failures, and resuming a hard pause', async () => {
+    it('allows cancelling pending jobs, retrying failures, deleting jobs, and resuming a hard pause', async () => {
+        vi.stubGlobal('confirm', vi.fn().mockReturnValue(true));
         render(<AdminCifraclubImportPage />);
 
         const cancelButton = await screen.findByRole('button', {
@@ -420,11 +431,20 @@ describe('AdminCifraclubImportPage', () => {
         await waitFor(() => {
             expect(queue.cancelImportJob).toHaveBeenCalledWith('job-pending');
         });
-        expect(screen.queryByRole('button', {
-            name: 'Cancelar importação de Fernandinho',
-        })).not.toBeInTheDocument();
 
-        const retryButton = screen.getByRole('button', {
+        const deleteButton = screen.getByRole('button', {
+            name: 'Excluir importação de Gabriel Guedes',
+        });
+        fireEvent.click(deleteButton);
+
+        await waitFor(() => {
+            expect(queue.deleteImportJob).toHaveBeenCalledWith('job-pending');
+        });
+
+        const completedTab = screen.getByRole('button', { name: /Concluídos/ });
+        fireEvent.click(completedTab);
+
+        const retryButton = await screen.findByRole('button', {
             name: 'Tentar novamente Diante do Trono',
         });
         fireEvent.click(retryButton);
@@ -432,9 +452,6 @@ describe('AdminCifraclubImportPage', () => {
         await waitFor(() => {
             expect(queue.retryImportFailures).toHaveBeenCalledWith('job-errors');
         });
-        expect(screen.queryByRole('button', {
-            name: 'Tentar novamente Aline Barros',
-        })).not.toBeInTheDocument();
 
         const resumeButton = screen.getByRole('button', {
             name: 'Retomar importação de Voz da Verdade',
@@ -444,9 +461,6 @@ describe('AdminCifraclubImportPage', () => {
         await waitFor(() => {
             expect(queue.resumeImportJob).toHaveBeenCalledWith('job-paused-limit');
         });
-        expect(screen.queryByRole('button', {
-            name: 'Retomar importação de Gabriela Rocha',
-        })).not.toBeInTheDocument();
     });
 
     it('allows pausing active jobs and reordering queued jobs', async () => {

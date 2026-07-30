@@ -125,6 +125,10 @@ export function resumeImportJob(id) {
     return callRpc('resume_cifraclub_import', { p_job_id: id });
 }
 
+export function deleteImportJob(id) {
+    return callRpc('delete_cifraclub_import', { p_job_id: id });
+}
+
 export function reorderImportJobs(jobIds) {
     return callRpc('reorder_cifraclub_import_jobs', { p_job_ids: jobIds });
 }

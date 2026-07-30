@@ -4,13 +4,16 @@ import {
     ArrowUp,
     CheckCircle2,
     CirclePause,
+    Clock,
     ListMusic,
     RotateCcw,
     Search,
+    Trash2,
     XCircle,
 } from 'lucide-react';
 import {
     cancelImportJob,
+    deleteImportJob,
     enqueueArtistSelection,
     listImportJobs,
     pauseImportJob,
@@ -158,12 +161,19 @@ export function AdminCifraclubImportPage() {
     const [actionJobId, setActionJobId] = useState(null);
     const [searchError, setSearchError] = useState('');
     const [queueError, setQueueError] = useState('');
+    const [activeTab, setActiveTab] = useState('queue'); // 'queue' | 'completed'
     const searchRequestId = useRef(0);
     const previewRequestId = useRef(0);
     const refreshRequestId = useRef(0);
     const isMounted = useRef(false);
 
-    const displayedJobs = useMemo(() => sortJobsForDisplay(jobs), [jobs]);
+    const queuedJobs = useMemo(() => jobs.filter(isQueuedJob), [jobs]);
+    const completedJobs = useMemo(() => jobs.filter((job) => !isQueuedJob(job)), [jobs]);
+
+    const displayedJobs = useMemo(() => {
+        const targetList = activeTab === 'queue' ? queuedJobs : completedJobs;
+        return sortJobsForDisplay(targetList);
+    }, [activeTab, queuedJobs, completedJobs]);
 
     const activeJob = useMemo(
         () => jobs.find((job) => job.status === 'discovering' || job.status === 'processing'),
@@ -389,6 +399,22 @@ export function AdminCifraclubImportPage() {
         }
     };
 
+    const handleDelete = async (job) => {
+        if (!window.confirm(`Tem certeza que deseja excluir a importação de "${job.artist_name}"?`)) {
+            return;
+        }
+        setActionJobId(job.id);
+        setQueueError('');
+        try {
+            await deleteImportJob(job.id);
+            await refreshJobs();
+        } catch (error) {
+            setQueueError(getErrorMessage(error, 'Não foi possível excluir a importação.'));
+        } finally {
+            setActionJobId(null);
+        }
+    };
+
     return (
         <main className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 sm:px-6">
             <header className="flex flex-col gap-2 border-b border-slate-200 pb-4 dark:border-slate-800 sm:flex-row sm:items-end sm:justify-between">
@@ -475,18 +501,45 @@ export function AdminCifraclubImportPage() {
             )}
 
             <section aria-label="Fila de importação" className="space-y-3">
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-white">
                         <ListMusic size={20} className="text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
                         Fila de importação
                     </h2>
-                    <span className="text-sm text-slate-500 dark:text-slate-400">{jobs.length} artistas</span>
+                    <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800/60">
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab('queue')}
+                            className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                                activeTab === 'queue'
+                                    ? 'bg-white text-indigo-600 shadow-sm dark:bg-slate-900 dark:text-indigo-400'
+                                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+                            }`}
+                        >
+                            <Clock size={14} />
+                            <span>Em Fila ({queuedJobs.length})</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab('completed')}
+                            className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                                activeTab === 'completed'
+                                    ? 'bg-white text-indigo-600 shadow-sm dark:bg-slate-900 dark:text-indigo-400'
+                                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+                            }`}
+                        >
+                            <CheckCircle2 size={14} />
+                            <span>Concluídos ({completedJobs.length})</span>
+                        </button>
+                    </div>
                 </div>
 
                 {queueError && <p role="alert" className="text-sm text-rose-600 dark:text-rose-400">{queueError}</p>}
 
-                {jobs.length === 0 ? (
-                    <p className="border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">Nenhum artista na fila.</p>
+                {displayedJobs.length === 0 ? (
+                    <p className="border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                        {activeTab === 'queue' ? 'Nenhum artista na fila.' : 'Nenhum artista concluído.'}
+                    </p>
                 ) : (
                     <div className="space-y-2">
                         {displayedJobs.map((job, index) => {
@@ -615,6 +668,17 @@ export function AdminCifraclubImportPage() {
                                                     Retomar
                                                 </button>
                                             )}
+                                            <button
+                                                type="button"
+                                                onClick={() => void handleDelete(job)}
+                                                disabled={isActing}
+                                                aria-label={`Excluir importação de ${job.artist_name}`}
+                                                title={`Excluir importação de ${job.artist_name}`}
+                                                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-rose-200 px-2.5 text-sm font-medium text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-rose-900 dark:text-rose-300 dark:hover:bg-rose-950/40"
+                                            >
+                                                <Trash2 size={16} aria-hidden="true" />
+                                                Excluir
+                                            </button>
                                         </div>
                                     </div>
 

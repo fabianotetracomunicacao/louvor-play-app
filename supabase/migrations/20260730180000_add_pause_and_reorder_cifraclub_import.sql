@@ -160,6 +160,28 @@ $$;
 revoke all on function public.reorder_cifraclub_import_jobs(uuid[]) from public;
 grant execute on function public.reorder_cifraclub_import_jobs(uuid[]) to authenticated;
 
+-- Function to delete an import job from the queue
+create or replace function public.delete_cifraclub_import(
+  p_job_id uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_super_admin() then
+    raise exception 'forbidden';
+  end if;
+
+  delete from public.cifraclub_import_items where job_id = p_job_id;
+  delete from public.cifraclub_import_jobs where id = p_job_id;
+end;
+$$;
+
+revoke all on function public.delete_cifraclub_import(uuid) from public;
+grant execute on function public.delete_cifraclub_import(uuid) to authenticated;
+
 -- Update claim_cifraclub_import_work to respect queue_position order and skip jobs waiting for cooldown
 create or replace function public.claim_cifraclub_import_work(
   p_lease_seconds integer default 120

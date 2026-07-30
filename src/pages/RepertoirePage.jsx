@@ -117,7 +117,12 @@ export function RepertoirePage() {
         setIsSearchingExternal(true);
         try {
             const response = await fetch(`${CIFRA_API_URL}/artists/${item.artist_slug}/songs/${item.song_slug}`);
-            if (!response.ok) throw new Error('Falha ao obter detalhes da música');
+            if (!response.ok) {
+                if (response.status === 403) {
+                    throw new Error('O CifraClub bloqueou a busca direta (erro 403). Utilize a Fila de Importação por Artista.');
+                }
+                throw new Error('Falha ao obter detalhes da música');
+            }
             
             const data = await response.json();
             
@@ -142,7 +147,7 @@ export function RepertoirePage() {
             });
         } catch (err) {
             console.error("Import failed:", err);
-            showToast("Erro ao importar música. Tente novamente.", "error");
+            showToast(err instanceof Error && err.message ? err.message : "Erro ao importar música. Tente novamente.", "error");
         } finally {
             setIsSearchingExternal(false);
         }

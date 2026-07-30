@@ -164,7 +164,12 @@ export function MainLayout() {
             }
 
             const response = await fetch(`${CIFRA_API_URL}/artists/${item.artist_slug}/songs/${item.song_slug}`);
-            if (!response.ok) throw new Error('Falha ao obter detalhes');
+            if (!response.ok) {
+                if (response.status === 403) {
+                    throw new Error('O CifraClub bloqueou a busca direta (erro 403). Utilize a Fila de Importação.');
+                }
+                throw new Error('Falha ao obter detalhes');
+            }
             const data = await response.json();
 
             const rawContent = (data.cifra || []).join('\n');
@@ -188,7 +193,7 @@ export function MainLayout() {
             closeSearch();
         } catch (err) {
             console.error("External action failed:", err);
-            setSearchError("Erro ao carregar música da internet.");
+            setSearchError(err instanceof Error && err.message ? err.message : "Erro ao carregar música da internet.");
         } finally {
             setIsSearchingExternal(false);
         }

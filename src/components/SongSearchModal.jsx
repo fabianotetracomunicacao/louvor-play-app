@@ -88,7 +88,12 @@ export function SongSearchModal({ isOpen, onClose, onImport }) {
         try {
             // Fetch dots/chords from API
             const response = await fetch(`${CIFRA_API_URL}/artists/${item.artist_slug}/songs/${item.song_slug}`);
-            if (!response.ok) throw new Error('Falha ao obter detalhes da música');
+            if (!response.ok) {
+                if (response.status === 403) {
+                    throw new Error('O CifraClub bloqueou a busca direta (erro 403). Adicione o artista à Fila de Importação para importar em background.');
+                }
+                throw new Error('Falha ao obter detalhes da música');
+            }
             const data = await response.json();
 
             // Format content using parseImporter
@@ -111,7 +116,7 @@ export function SongSearchModal({ isOpen, onClose, onImport }) {
             onClose();
         } catch (err) {
             console.error("Import failed:", err);
-            setError("Erro ao importar música. Tente novamente.");
+            setError(err instanceof Error && err.message ? err.message : "Erro ao importar música. Tente novamente.");
         } finally {
             setIsSearching(false);
         }

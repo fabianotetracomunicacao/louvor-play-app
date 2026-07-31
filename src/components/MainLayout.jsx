@@ -205,6 +205,7 @@ export function MainLayout() {
             setSearchError(err instanceof Error && err.message ? err.message : "Erro ao carregar música da internet.");
         } finally {
             setIsSearchingExternal(false);
+        }
     };
 
     return (

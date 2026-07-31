@@ -63,6 +63,7 @@ export function RepertoirePage() {
     const [hasMore, setHasMore] = useState(false);
     const SONGS_PER_PAGE = 50;
 
+
     const [expandedGroups, setExpandedGroups] = useState(new Set());
     const [externalResults, setExternalResults] = useState([]);
     const [isSearchingExternal, setIsSearchingExternal] = useState(false);
@@ -91,21 +92,6 @@ export function RepertoirePage() {
 
             try {
                 const response = await fetch(`${CIFRA_API_URL}/search?q=${encodeURIComponent(filters.query)}`);
-                if (!response.ok) throw new Error('Falha ao buscar cifras na internet');
-                
-                const data = await response.json();
-                const results = data.results || [];
-                
-                // Add slug and check for existing (optional optimization, keeping it simple for now)
-                const resultsWithSlug = results.map(res => ({
-                    ...res,
-                    slug: `${res.artist_slug}/${res.song_slug}`
-                }));
-
-                setExternalResults(resultsWithSlug);
-            } catch (err) {
-                console.warn("External search failed:", err);
-                setExternalError("Não foi possível conectar à busca externa.");
                 if (!response.ok) throw new Error('Falha ao buscar cifras na internet');
                 
                 const data = await response.json();

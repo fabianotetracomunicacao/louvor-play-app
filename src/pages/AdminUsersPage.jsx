@@ -328,6 +328,11 @@ export function AdminUsersPage() {
                     </div>
                     <div className="flex items-center gap-2">
                         <ButtonLink
+                            to="/admin/review"
+                            icon={<Eye size={18} />}
+                            label="Revisão"
+                        />
+                        <ButtonLink
                             to="/admin/trash"
                             icon={<Trash2 size={18} />}
                             label="Lixeira"

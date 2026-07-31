@@ -48,7 +48,7 @@ export function AdminContentReviewPage() {
             try {
                 const { error } = await supabase
                     .from('songs')
-                    .update({ pending_admin_review: false })
+                    .update({ pending_admin_review: false, is_official: true })
                     .eq('id', song.id);
 
                 if (error) throw error;

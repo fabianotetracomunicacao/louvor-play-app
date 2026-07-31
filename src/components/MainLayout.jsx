@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { Home, Music, Mic, Settings, User, Sun, Moon, Shield, Search, X, MonitorUp, Maximize, Minimize, BadgeCheck, Calendar, Library, GraduationCap, Church, CreditCard, DollarSign, Globe, Play, SquarePen, Loader2, Info, Activity, ListMusic, BarChart3 } from 'lucide-react';
+import { Home, Music, Mic, Settings, User, Sun, Moon, Shield, Search, X, MonitorUp, Maximize, Minimize, BadgeCheck, Calendar, Library, GraduationCap, Church, CreditCard, DollarSign, Globe, Play, SquarePen, Loader2, Info, Activity, ListMusic, BarChart3, Eye } from 'lucide-react';
 import { searchSongs, getSongBySlug, autoSaveExternalSong } from '../utils/storage';
 import { parseImporter } from '../utils/importer';
 import { useAuth } from '../contexts/AuthContext';

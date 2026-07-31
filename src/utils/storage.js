@@ -410,6 +410,92 @@ export async function getSongBySlug(slug) {
     return data ? mapSongFromDb(data) : null;
 }
 
+/**
+ * Automatically save an external song fetched from CifraClub into the global platform database.
+ * Assigns created_by to the louvorplay system profile / super_admin or current user.
+ * @param {object} songData { title, artist, content, cifraclub_slug, youtubeLinks }
+ * @returns {Promise<object|null>} The saved song object or null on failure
+ */
+export async function autoSaveExternalSong(songData) {
+    if (!songData || (!songData.cifraclub_slug && !songData.cifraclubSlug && !songData.title)) return null;
+
+    const slug = songData.cifraclub_slug || songData.cifraclubSlug;
+
+    try {
+        // 1. Check if song already exists by CifraClub slug
+        if (slug) {
+            const existingBySlug = await getSongBySlug(slug);
+            if (existingBySlug) return existingBySlug;
+        }
+
+        // 2. Check if song exists by exact title and artist
+        if (songData.title && songData.artist) {
+            const { data: existingByTitleArtist } = await supabase
+                .from('songs')
+                .select('*, creator:created_by(email, name, full_name)')
+                .ilike('title', songData.title.trim())
+                .ilike('artist', songData.artist.trim())
+                .is('deleted_at', null)
+                .maybeSingle();
+
+            if (existingByTitleArtist) {
+                // If it exists but didn't have the slug, update the slug
+                if (slug && !existingByTitleArtist.cifraclub_slug) {
+                    await supabase
+                        .from('songs')
+                        .update({ cifraclub_slug: slug, updated_at: new Date().toISOString() })
+                        .eq('id', existingByTitleArtist.id);
+                }
+                return mapSongFromDb(existingByTitleArtist);
+            }
+        }
+
+        // 3. Find LouvorPlay system profile / super admin profile
+        const { data: systemProfile } = await supabase
+            .from('profiles')
+            .select('id')
+            .or('email.ilike.%louvorplay%,role.eq.super_admin')
+            .order('created_at', { ascending: true })
+            .limit(1)
+            .maybeSingle();
+
+        const { data: { user } } = await supabase.auth.getUser();
+        const createdBy = systemProfile?.id || user?.id;
+
+        if (!createdBy) return null;
+
+        const dbPayload = {
+            title: songData.title,
+            artist: songData.artist,
+            content: songData.content || '',
+            cifraclub_slug: slug || null,
+            is_official: true,
+            created_by: createdBy,
+            views: 1,
+            youtube_links: songData.youtubeLinks || songData.youtube_links || [],
+            type: songData.type || 'chords',
+            updated_at: new Date().toISOString()
+        };
+
+        const { data, error } = await supabase
+            .from('songs')
+            .insert([dbPayload])
+            .select('*, creator:created_by(email, name, full_name)')
+            .single();
+
+        if (error) {
+            console.warn('autoSaveExternalSong insert warning:', error);
+            return null;
+        }
+
+        clearAllListCaches();
+        return mapSongFromDb(data);
+    } catch (err) {
+        console.warn('autoSaveExternalSong error:', err);
+        return null;
+    }
+}
+
 export async function checkDuplicateSongs(title) {
     const { data, error } = await supabase
         .from('songs')

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { createClient } from '@supabase/supabase-js';
 import { useAuth } from '../contexts/AuthContext';
-import { Trash2, Shield, User, Loader, AlertTriangle, UserPlus, Check, X, Settings, Eye, EyeOff, BarChart3, DollarSign, Package, MessageCircle, Phone } from 'lucide-react';
+import { Trash2, Shield, User, Loader, AlertTriangle, UserPlus, Check, X, Settings, Eye, EyeOff, BarChart3, DollarSign, MessageCircle, Phone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useNotification } from '../contexts/NotificationContext';
 import { UserEditModal } from '../components/UserEditModal';
@@ -114,8 +114,6 @@ export function AdminUsersPage() {
     const fetchUsers = async () => {
         setLoading(true);
         try {
-            // Note: We can only list PROFILES. We cannot list auth.users without service role key or RPC.
-            // Assumption: profiles table contains all relevant users.
             const { data, error } = await supabase
                 .from('profiles')
                 .select(`
@@ -127,7 +125,6 @@ export function AdminUsersPage() {
 
             if (error) throw error;
 
-            // Sort by Role Priority
             const rolePriority = { 'super_admin': 4, 'CHURCH_ADMIN': 3, 'WORSHIP_LEADER': 2, 'WORSHIPPER': 1 };
 
             const sortedData = data.sort((a, b) => {
@@ -135,9 +132,8 @@ export function AdminUsersPage() {
                 const priorityB = rolePriority[b.role] || 0;
 
                 if (priorityA !== priorityB) {
-                    return priorityB - priorityA; // Higher priority first
+                    return priorityB - priorityA;
                 }
-                // Tie-breaker: Name/Email alphabetical
                 return (a.email || '').localeCompare(b.email || '');
             });
 
@@ -156,21 +152,18 @@ export function AdminUsersPage() {
         setError('');
 
         try {
-            // USAR UM CLIENTE TEMPORÁRIO PARA NÃO DESLOGAR O ADMIN
-            // Criando nova instância usando a função importada
             const tempSupabase = createClient(
                 import.meta.env.VITE_SUPABASE_URL,
                 import.meta.env.VITE_SUPABASE_ANON_KEY,
                 {
                     auth: {
-                        persistSession: false, // Importante: Não salvar sessão no LocalStorage
+                        persistSession: false,
                         autoRefreshToken: false,
                         detectSessionInUrl: false
                     }
                 }
             );
 
-            // 1. Criar Usuário (Dispara Email de Confirmação automaticamente)
             const { data: authData, error: authError } = await tempSupabase.auth.signUp({
                 email: newUserEmail,
                 password: newUserPassword,
@@ -180,16 +173,14 @@ export function AdminUsersPage() {
                         full_name: newUserName,
                         phone_number: newUserPhone,
                         instrument: newUserInstrument,
-                        role: newUserRole // Pass role here too for triggers that might use it
+                        role: newUserRole
                     }
                 }
             });
 
             if (authError) throw authError;
 
-            // 2. Definir Cargo e Vínculo com Igreja (Update Profile & Membership)
             if (authData.user) {
-                // Aguardar um pouco para garantir que o trigger handle_new_user rodou
                 await new Promise(r => setTimeout(r, 1000));
 
                 const profileUpdates = {
@@ -198,7 +189,6 @@ export function AdminUsersPage() {
                     available_instruments: newUserAvailableInstruments
                 };
 
-                // Se houver igreja selecionada, define como ativa no perfil
                 if (newUserChurchId && newUserRole !== 'super_admin') {
                     profileUpdates.active_church_id = newUserChurchId;
                 }
@@ -212,9 +202,7 @@ export function AdminUsersPage() {
                     console.warn('Erro ao definir perfil inicial:', profileError);
                 }
 
-                // 3. Criar Vínculo na Tabela de Memberships (SaaS multi-tenant)
                 if (newUserChurchId && newUserRole !== 'super_admin') {
-                    // Mapear o role do profiles para o role da igreja
                     let churchRole = 'WORSHIPPER';
                     if (newUserRole === 'CHURCH_ADMIN') churchRole = 'CHURCH_ADMIN';
                     if (newUserRole === 'WORSHIP_LEADER') churchRole = 'WORSHIP_LEADER';
@@ -262,21 +250,17 @@ export function AdminUsersPage() {
 
             if (error) throw error;
 
-            // Update local state immediately
             setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
-
-            // Show success briefly
             setTimeout(() => setUpdatingUserId(null), 1000);
         } catch (error) {
             console.error('Error updating role:', error);
             alert('Erro ao atualizar cargo: ' + (error.message || 'Verifique se você tem permissões de Super Admin no banco de dados.'));
             setUpdatingUserId(null);
-            fetchUsers(); // Rollback UI
+            fetchUsers();
         }
     };
 
     const handleDeleteUser = async (user) => {
-        // 1. Check for owned songs
         try {
             const { count, error } = await supabase
                 .from('songs')
@@ -286,11 +270,9 @@ export function AdminUsersPage() {
             if (error) throw error;
 
             if (count > 0) {
-                // Prepare Transfer Modal
                 setDeleteTarget({ ...user, songCount: count });
                 setIsDeleting(true);
             } else {
-                // No songs, direct delete confirmation
                 const confirmed = await confirmAction({
                     title: 'Excluir Usuário',
                     message: `Tem certeza que deseja EXCLUIR PERMANENTEMENTE ${user.email}? Esta ação não pode ser desfeita.`,
@@ -338,26 +320,13 @@ export function AdminUsersPage() {
                     <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                         <Shield className="text-purple-600" /> Gerenciar Usuários
                     </h2>
-                    <div className="text-sm text-slate-500 md:hidden">
-                        Total: {users.length}
-                    </div>
                 </div>
 
                 <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto justify-between md:justify-end">
-                    <div className="text-sm text-slate-500 hidden md:block">
+                    <div className="text-sm text-slate-500">
                         Total: {users.length}
                     </div>
                     <div className="flex items-center gap-2">
-                        <ButtonLink
-                            to="/admin/reports"
-                            icon={<BarChart3 size={18} />}
-                            label="Relatórios"
-                        />
-                        <ButtonLink
-                            to="/admin/review"
-                            icon={<Eye size={18} />}
-                            label="Revisão"
-                        />
                         <ButtonLink
                             to="/admin/trash"
                             icon={<Trash2 size={18} />}
@@ -370,22 +339,6 @@ export function AdminUsersPage() {
                         />
                     </div>
                 </div>
-            </div>
-
-            {/* Plans Summary */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {plans.map(plan => (
-                    <div key={plan.id} className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
-                            <Package size={64} />
-                        </div>
-                        <h3 className="font-black text-slate-800 dark:text-white text-lg">{plan.name}</h3>
-                        <p className="text-sm text-slate-500 mb-4 h-10 overflow-hidden text-ellipsis">{plan.description}</p>
-                        <div className="flex gap-4 text-xs font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400">
-                            <span>Acesso Individual / 1 Usuário</span>
-                        </div>
-                    </div>
-                ))}
             </div>
 
             {error && <div className="bg-red-100 text-red-700 p-4 rounded-lg">{error}</div>}
@@ -414,7 +367,7 @@ export function AdminUsersPage() {
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                         {loading ? (
                             <tr>
-                                <td colSpan="3" className="p-8 text-center text-slate-500">Carregando...</td>
+                                <td colSpan="4" className="p-8 text-center text-slate-500">Carregando...</td>
                             </tr>
                         ) : users
                             .slice((currentPage - 1) * usersPerPage, currentPage * usersPerPage)
@@ -560,7 +513,6 @@ export function AdminUsersPage() {
                         <div className="flex items-center gap-1">
                             {Array.from({ length: Math.ceil(users.length / usersPerPage) }, (_, i) => i + 1)
                                 .filter(page => {
-                                    // Show first, last, current, and neighbors
                                     const totalPages = Math.ceil(users.length / usersPerPage);
                                     return page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1;
                                 })

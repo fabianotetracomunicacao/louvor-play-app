@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Filter, SortAsc, Plus, Trash2, Mic2, FileText, Music, Heart, Search, Eye, Printer, Edit2, BookOpen, PlusCircle, Play, GraduationCap, MoreVertical, X, Copy, BadgeCheck, MonitorUp, Loader2, Globe, CheckCircle2, ExternalLink } from 'lucide-react'; // Try to find a nice icon for Repertoire
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { getLikedSongs, getUserEdits, deleteSong, searchSongs, getSongs, getMusicalStyles, getSongFunctions, toggleLike, copySong, toggleSongOfficial } from '../utils/storage';
+import { getLikedSongs, getUserEdits, deleteSong, searchSongs, getSongs, getMusicalStyles, getSongFunctions, toggleLike, copySong, toggleSongOfficial, autoSaveExternalSong } from '../utils/storage';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { useData } from '../contexts/DataContext';
 import { LiquidLoader } from '../components/LiquidLoader';
+import { parseImporter } from '../utils/importer';
 import { CIFRA_API_URL } from '../utils/cifraApi';
 
 export function RepertoirePage() {
@@ -105,6 +106,21 @@ export function RepertoirePage() {
             } catch (err) {
                 console.warn("External search failed:", err);
                 setExternalError("Não foi possível conectar à busca externa.");
+                if (!response.ok) throw new Error('Falha ao buscar cifras na internet');
+                
+                const data = await response.json();
+                const results = data.results || [];
+                
+                // Add slug and check for existing (optional optimization, keeping it simple for now)
+                const resultsWithSlug = results.map(res => ({
+                    ...res,
+                    slug: `${res.artist_slug}/${res.song_slug}`
+                }));
+
+                setExternalResults(resultsWithSlug);
+            } catch (err) {
+                console.warn("External search failed:", err);
+                setExternalError("Não foi possível conectar à busca externa.");
             } finally {
                 setIsSearchingExternal(false);
             }
@@ -125,26 +141,25 @@ export function RepertoirePage() {
             }
             
             const data = await response.json();
-            
-            // Format content using parseImporter if available, otherwise raw
-            // Since we imported it above, we can use it.
             const rawContent = (data.cifra || []).join('\n');
-            // We need to import parseImporter at the top if we use it, but SongSearchModal uses it.
-            // Let's check imports in RepertoirePage.
+            const formattedContent = parseImporter ? parseImporter(rawContent) : rawContent;
             
-            // Navigate to editor with state
-            navigate('/editor', { 
-                state: { 
-                    importData: {
-                        title: data.name,
-                        artist: data.artist,
-                        content: rawContent, // Editor will handle formatting or we can do it here
-                        youtubeLinks: (data.youtube_url && (data.youtube_url.includes('http') || data.youtube_url.includes('youtube.com') || data.youtube_url.includes('youtu.be'))) ? [data.youtube_url] : [],
-                        cifraclub_slug: item.slug,
-                        source: 'cifraclub'
-                    }
-                } 
-            });
+            const songData = {
+                title: data.name,
+                artist: data.artist,
+                content: formattedContent,
+                youtubeLinks: (data.youtube_url && (data.youtube_url.includes('http') || data.youtube_url.includes('youtube.com') || data.youtube_url.includes('youtu.be'))) ? [data.youtube_url] : [],
+                cifraclub_slug: item.slug,
+                source: 'cifraclub'
+            };
+
+            const savedSong = await autoSaveExternalSong(songData);
+
+            if (savedSong && savedSong.id) {
+                navigate(`/editor/${savedSong.id}`);
+            } else {
+                navigate('/editor', { state: { importData: songData } });
+            }
         } catch (err) {
             console.error("Import failed:", err);
             showToast(err instanceof Error && err.message ? err.message : "Erro ao importar música. Tente novamente.", "error");
@@ -156,7 +171,6 @@ export function RepertoirePage() {
     const checkIsOfficial = (s) => {
         if (!s) return false;
         if (s.isOfficial === true || s.is_official === true) return true;
-        if (s.creatorName && (s.creatorName.includes('Oficial') || s.creatorName.includes('LouvorPlay'))) return true;
         if (s.creator && (s.creator.full_name?.includes('Oficial') || s.creator.email?.includes('louvorplay'))) return true;
         return false;
     };

@@ -77,11 +77,17 @@ export function SongSearchModal({ isOpen, onClose, onImport }) {
     };
 
     const handleSelectExternal = async (item) => {
-        if (item.existingId) {
-            // Already in system, just use it
-            onImport({ id: item.existingId });
-            onClose();
-            return;
+        setError(null);
+        // Check if already in DB by slug
+        try {
+            const existing = await getSongBySlug(item.slug);
+            if (existing) {
+                onImport(existing);
+                onClose();
+                return;
+            }
+        } catch (e) {
+            console.warn("Slug check failed:", e);
         }
 
         setIsSearching(true); // Re-use loading state
@@ -103,8 +109,7 @@ export function SongSearchModal({ isOpen, onClose, onImport }) {
             const youtube_url = data.youtube_url;
             const isValidUrl = youtube_url && (youtube_url.includes('http') || youtube_url.includes('youtube.com') || youtube_url.includes('youtu.be'));
 
-            // Return data to editor
-            onImport({
+            const songData = {
                 title: data.name,
                 artist: data.artist,
                 content: formattedContent,
@@ -112,7 +117,13 @@ export function SongSearchModal({ isOpen, onClose, onImport }) {
                 cifraclub_slug: item.slug,
                 is_official: false,
                 source: 'cifraclub'
-            });
+            };
+
+            // Auto-save external song to database under louvorplay / system user
+            const savedSong = await autoSaveExternalSong(songData);
+
+            // Return data to editor
+            onImport(savedSong || songData);
             onClose();
         } catch (err) {
             console.error("Import failed:", err);

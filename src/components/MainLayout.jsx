@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Outlet, NavLink } from 'react-router-dom';
-import { Home, Music, Mic, Settings, User, Sun, Moon, Shield, Search, X, MonitorUp, Maximize, Minimize, BadgeCheck, Calendar, Library, GraduationCap, Church, CreditCard, DollarSign, Globe, Play, SquarePen, Loader2, Info, Activity, ListMusic } from 'lucide-react';
-import { searchSongs, getSongBySlug } from '../utils/storage';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { Home, Music, Mic, Settings, User, Sun, Moon, Shield, Search, X, MonitorUp, Maximize, Minimize, BadgeCheck, Calendar, Library, GraduationCap, Church, CreditCard, DollarSign, Globe, Play, SquarePen, Loader2, Info, Activity, ListMusic, BarChart3 } from 'lucide-react';
+import { searchSongs, getSongBySlug, autoSaveExternalSong } from '../utils/storage';
 import { parseImporter } from '../utils/importer';
 import { useAuth } from '../contexts/AuthContext';
 import { Portal } from './Portal';
-import { useNavigate, useLocation } from 'react-router-dom';
-
 import { NotificationBell } from './NotificationBell';
 import { OfflineIndicator } from './OfflineIndicator';
 import { useNotification } from '../contexts/NotificationContext';
@@ -185,10 +183,21 @@ export function MainLayout() {
                 source: 'cifraclub'
             };
 
+            const savedSong = await autoSaveExternalSong(songData);
+            const targetId = savedSong ? savedSong.id : null;
+
             if (action === 'edit') {
-                navigate('/editor', { state: { importData: songData } });
+                if (targetId) {
+                    navigate(`/editor/${targetId}`);
+                } else {
+                    navigate('/editor', { state: { importData: songData } });
+                }
             } else {
-                navigate('/player/internet', { state: { song: songData } });
+                if (targetId) {
+                    navigate(`/player/${targetId}`);
+                } else {
+                    navigate('/player/internet', { state: { song: songData } });
+                }
             }
             closeSearch();
         } catch (err) {
@@ -196,7 +205,6 @@ export function MainLayout() {
             setSearchError(err instanceof Error && err.message ? err.message : "Erro ao carregar música da internet.");
         } finally {
             setIsSearchingExternal(false);
-        }
     };
 
     return (

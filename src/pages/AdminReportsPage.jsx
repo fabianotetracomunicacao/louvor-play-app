@@ -24,48 +24,65 @@ export function AdminReportsPage() {
     const loadStatistics = async () => {
         setLoading(true);
         try {
-            // Fetch all statistics in parallel
-            const [
-                { data: totalSongs },
-                { data: totalPlays },
-                { data: topSongsData },
-                { data: userCounts },
-                { data: playlistCounts },
-                allUsersResponse
-            ] = await Promise.all([
-                supabase.rpc('get_total_songs'),
-                supabase.rpc('get_total_plays'),
-                supabase.rpc('get_top_songs', { limit_count: 100 }),
-                supabase.rpc('get_user_counts_by_role'),
-                supabase.rpc('get_playlist_counts'),
-                supabase.from('profiles').select('id', { count: 'exact', head: true })
+            // Fetch statistics directly from tables in parallel
+            const [songsCountRes, topSongsRes, profilesRes, playlistsRes, setlistsRes] = await Promise.all([
+                supabase.from('songs').select('id', { count: 'exact', head: true }).is('deleted_at', null),
+                supabase.from('songs').select('id, title, artist, views').is('deleted_at', null).order('views', { ascending: false, nullsFirst: false }).limit(100),
+                supabase.from('profiles').select('id, role'),
+                supabase.from('playlists').select('id, is_public, is_collaborative'),
+                supabase.from('setlists').select('id, is_public')
             ]);
 
-            // Process user counts by role
+            const totalSongs = songsCountRes.count || 0;
+            const topSongsData = topSongsRes.data || [];
+            
+            // Total plays = sum of views
+            const totalPlays = topSongsData.reduce((sum, song) => sum + (Number(song.views) || 0), 0);
+
+            // Process users by role
+            const profilesData = profilesRes.data || [];
             const usersByRole = {};
-            if (userCounts) {
-                userCounts.forEach(({ role, count }) => {
-                    usersByRole[role] = parseInt(count);
+            profilesData.forEach(p => {
+                const role = p.role || 'WORSHIPPER';
+                usersByRole[role] = (usersByRole[role] || 0) + 1;
+            });
+
+            // Process playlists by type
+            const playlistsData = playlistsRes.data || [];
+            const setlistsData = setlistsRes.data || [];
+            
+            let publicCount = 0;
+            let collabCount = 0;
+            let privateCount = 0;
+
+            if (playlistsData.length > 0) {
+                playlistsData.forEach(p => {
+                    if (p.is_collaborative) collabCount++;
+                    else if (p.is_public) publicCount++;
+                    else privateCount++;
+                });
+            } else if (setlistsData.length > 0) {
+                setlistsData.forEach(s => {
+                    if (s.is_public) publicCount++;
+                    else privateCount++;
                 });
             }
 
-            // Process playlist counts by type
-            const playlistsByType = {};
-            if (playlistCounts) {
-                playlistCounts.forEach(({ type, count }) => {
-                    playlistsByType[type] = parseInt(count);
-                });
-            }
+            const playlistsByType = {
+                public: publicCount,
+                collaborative: collabCount,
+                private: privateCount
+            };
 
             setStatistics({
-                totalSongs: totalSongs || 0,
-                totalPlays: totalPlays || 0,
-                totalUsers: allUsersResponse?.count || 0,
+                totalSongs,
+                totalPlays,
+                totalUsers: profilesData.length || 0,
                 usersByRole,
                 playlistsByType
             });
 
-            setTopSongs(topSongsData || []);
+            setTopSongs(topSongsData);
         } catch (error) {
             console.error('Error loading statistics:', error);
         } finally {
@@ -158,13 +175,24 @@ export function AdminReportsPage() {
                             {(() => {
                                 // Role translation and priority
                                 const roleTranslation = {
+                                    'super_admin': 'Super Admin',
+                                    'CHURCH_ADMIN': 'Admin de Igreja',
+                                    'WORSHIP_LEADER': 'Líder de Louvor',
+                                    'WORSHIPPER': 'Músico',
                                     'admin': 'Administrador',
                                     'editor': 'Editor',
                                     'musician': 'Músico'
                                 };
-                                const rolePriority = { 'admin': 3, 'editor': 2, 'musician': 1 };
+                                const rolePriority = {
+                                    'super_admin': 5,
+                                    'CHURCH_ADMIN': 4,
+                                    'WORSHIP_LEADER': 3,
+                                    'WORSHIPPER': 2,
+                                    'admin': 3,
+                                    'editor': 2,
+                                    'musician': 1
+                                };
 
-                                // Sort roles by priority (Admin > Editor > Musician)
                                 return Object.entries(statistics.usersByRole)
                                     .sort(([roleA], [roleB]) => {
                                         return (rolePriority[roleB] || 0) - (rolePriority[roleA] || 0);

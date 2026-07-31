@@ -52,7 +52,7 @@ $$;
 revoke all on function public.pause_cifraclub_import(uuid) from public;
 grant execute on function public.pause_cifraclub_import(uuid) to authenticated;
 
--- Function to pause a job automatically on HTTP 403 / 429 block and push to end of queue
+-- Function to handle HTTP 403 / 429 block on items without pausing the job
 create or replace function public.pause_cifraclub_import_job(
   p_job_id uuid,
   p_item_id uuid,
@@ -66,62 +66,31 @@ security definer
 set search_path = public
 as $$
 declare
-  paused_job public.cifraclub_import_jobs;
-  released_item_id uuid;
-  max_pos integer;
+  updated_job public.cifraclub_import_jobs;
 begin
-  if p_claim_token is null or p_next_run_at is null then
-    raise exception 'claim token and next run are required';
-  end if;
-
   if p_item_id is not null then
     update public.cifraclub_import_items
-    set status = 'pending',
+    set status = 'failed',
         lease_until = null,
         claim_token = null,
         last_error = nullif(btrim(coalesce(p_error, '')), ''),
         updated_at = now()
     where id = p_item_id
-      and job_id = p_job_id
-      and status = 'processing'
-      and claim_token = p_claim_token
-      and lease_until >= now()
-    returning id into released_item_id;
-
-    if released_item_id is null then
-      raise exception 'item is not the current claim';
-    end if;
+      and job_id = p_job_id;
   end if;
 
-  -- Move the blocked job (403/429) to the end of the queue
-  select coalesce(max(queue_position), 0) + 1 into max_pos
-  from public.cifraclub_import_jobs;
-
   update public.cifraclub_import_jobs
-  set status = 'paused',
+  set status = 'processing',
       lease_until = null,
       claim_token = null,
-      blocked_count = blocked_count + 1,
-      queue_position = max_pos,
-      next_run_at = p_next_run_at,
+      blocked_count = 0,
+      next_run_at = now(),
       last_error = nullif(btrim(coalesce(p_error, '')), ''),
       updated_at = now()
   where id = p_job_id
-    and (
-      released_item_id is not null
-      or (
-        status = 'discovering'
-        and claim_token = p_claim_token
-        and lease_until >= now()
-      )
-    )
-  returning * into paused_job;
+  returning * into updated_job;
 
-  if paused_job.id is null then
-    raise exception 'job is not the current claim';
-  end if;
-
-  return paused_job;
+  return updated_job;
 end;
 $$;
 

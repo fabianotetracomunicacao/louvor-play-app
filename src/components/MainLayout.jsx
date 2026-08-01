@@ -457,6 +457,22 @@ export function MainLayout() {
                                         <ListMusic size={20} />
                                     </NavLink>
                                     <NavLink
+                                        to="/admin/review"
+                                        className={({ isActive }) => `p-2 rounded-full transition ${isActive ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'}`}
+                                        title="Revisão de Conteúdo"
+                                        aria-label="Revisão de Conteúdo"
+                                    >
+                                        <Eye size={20} />
+                                    </NavLink>
+                                    <NavLink
+                                        to="/admin/reports"
+                                        className={({ isActive }) => `p-2 rounded-full transition ${isActive ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'}`}
+                                        title="Relatórios do Sistema"
+                                        aria-label="Relatórios do Sistema"
+                                    >
+                                        <BarChart3 size={20} />
+                                    </NavLink>
+                                    <NavLink
                                         to="/admin/users"
                                         className={({ isActive }) => `p-2 rounded-full transition ${isActive ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'}`}
                                         title="Gerenciar Usuários"

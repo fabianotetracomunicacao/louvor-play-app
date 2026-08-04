@@ -350,6 +350,39 @@ export function SetlistManager({ playlistId, songs = [], availableSongs = [], on
 
     // Manual Mode Search
     const [searchQuery, setSearchQuery] = useState('');
+    const [dbSearchResults, setDbSearchResults] = useState([]);
+    const [isSearchingSongs, setIsSearchingSongs] = useState(false);
+
+    useEffect(() => {
+        const q = searchQuery.trim();
+        if (!q || q.length < 2) {
+            setDbSearchResults([]);
+            setIsSearchingSongs(false);
+            return;
+        }
+
+        setIsSearchingSongs(true);
+        const timer = setTimeout(async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('songs')
+                    .select('*')
+                    .or(`title.ilike.%${q}%,artist.ilike.%${q}%`)
+                    .limit(30);
+
+                if (!error && data) {
+                    const mapped = data.map(mapSongFromDb);
+                    setDbSearchResults(mapped);
+                }
+            } catch (e) {
+                console.error('Error searching songs from DB:', e);
+            } finally {
+                setIsSearchingSongs(false);
+            }
+        }, 300);
+
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
 
     const handleDragEnd = (result) => {
         if (!result.destination) return;

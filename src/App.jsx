@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { MainLayout } from './components/MainLayout';
 import { HomePage } from './pages/HomePage';
 import { RepertoirePage } from './pages/RepertoirePage';
@@ -41,6 +41,24 @@ import { AdminCifraclubImportPage } from './pages/AdminCifraclubImportPage';
 import { LiveSessionProvider } from './contexts/LiveSessionContext';
 import { MaintenanceGuard } from './components/MaintenanceGuard';
 
+function PasswordRecoveryDetector() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  React.useEffect(() => {
+    const isRecovery = location.pathname !== '/update-password' && (
+      location.search.includes('type=recovery') || 
+      location.hash.includes('type=recovery')
+    );
+
+    if (isRecovery) {
+      navigate('/update-password' + location.search + location.hash, { replace: true });
+    }
+  }, [location, navigate]);
+
+  return null;
+}
+
 function App() {
   React.useEffect(() => {
     const handleInstallPrompt = (e) => {
@@ -55,6 +73,7 @@ function App() {
 
   return (
     <Router>
+      <PasswordRecoveryDetector />
       <AuthProvider>
         <DataProvider>
           <NotificationProvider>

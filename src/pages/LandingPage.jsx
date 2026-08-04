@@ -153,6 +153,13 @@ export function LandingPage() {
     // Auto-redirect if already logged in
     useEffect(() => {
         if (!loading && user) {
+            const isRecovery = typeof window !== 'undefined' && 
+                (window.location.hash.includes('type=recovery') || 
+                 window.location.search.includes('type=recovery'));
+            if (isRecovery) {
+                navigate('/update-password' + window.location.search + window.location.hash, { replace: true });
+                return;
+            }
             navigate('/dashboard', { replace: true });
         }
     }, [user, loading, navigate]);

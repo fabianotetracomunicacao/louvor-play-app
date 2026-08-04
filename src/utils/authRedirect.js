@@ -10,15 +10,25 @@ export const getAuthRedirectUrl = (path = '') => {
     return `${getSiteOrigin()}${cleanPath}`;
 };
 
+export const isRecoveryFlowUrl = () => {
+    if (typeof window === 'undefined') return false;
+    const search = window.location.search || '';
+    const hash = window.location.hash || '';
+    return search.includes('type=recovery') || hash.includes('type=recovery');
+};
+
 export const exchangeAuthRedirectFromUrl = async (supabaseClient) => {
     if (typeof window === 'undefined') {
         return { data: null, error: null, handled: false };
     }
 
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get('code');
-    const tokenHash = params.get('token_hash') || params.get('token');
-    const type = params.get('type');
+    const searchParams = new URLSearchParams(window.location.search);
+    const hashStr = window.location.hash ? window.location.hash.substring(1) : '';
+    const hashParams = new URLSearchParams(hashStr);
+
+    const code = searchParams.get('code');
+    const tokenHash = searchParams.get('token_hash') || searchParams.get('token');
+    const type = searchParams.get('type') || hashParams.get('type');
 
     if (code) {
         const { data, error } = await supabaseClient.auth.exchangeCodeForSession(code);

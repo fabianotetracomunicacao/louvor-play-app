@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { logActivity } from '../utils/storage';
-import { getAuthRedirectUrl } from '../utils/authRedirect';
+import { getAuthRedirectUrl, isRecoveryFlowUrl } from '../utils/authRedirect';
 
 const AuthContext = createContext({});
 

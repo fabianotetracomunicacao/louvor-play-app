@@ -350,39 +350,6 @@ export function SetlistManager({ playlistId, songs = [], availableSongs = [], on
 
     // Manual Mode Search
     const [searchQuery, setSearchQuery] = useState('');
-    const [dbSearchResults, setDbSearchResults] = useState([]);
-    const [isSearchingSongs, setIsSearchingSongs] = useState(false);
-
-    useEffect(() => {
-        const q = searchQuery.trim();
-        if (!q || q.length < 2) {
-            setDbSearchResults([]);
-            setIsSearchingSongs(false);
-            return;
-        }
-
-        setIsSearchingSongs(true);
-        const timer = setTimeout(async () => {
-            try {
-                const { data, error } = await supabase
-                    .from('songs')
-                    .select('*')
-                    .or(`title.ilike.%${q}%,artist.ilike.%${q}%`)
-                    .limit(30);
-
-                if (!error && data) {
-                    const mapped = data.map(mapSongFromDb);
-                    setDbSearchResults(mapped);
-                }
-            } catch (e) {
-                console.error('Error searching songs from DB:', e);
-            } finally {
-                setIsSearchingSongs(false);
-            }
-        }, 300);
-
-        return () => clearTimeout(timer);
-    }, [searchQuery]);
 
     const handleDragEnd = (result) => {
         if (!result.destination) return;
@@ -872,23 +839,16 @@ export function SetlistManager({ playlistId, songs = [], availableSongs = [], on
                                             <Search className="absolute left-3 top-3 text-slate-400" size={18} />
                                             <input
                                                 type="text"
-                                                placeholder="Buscar música ou versão no sistema..."
+                                                placeholder="Buscar música nesta playlist..."
                                                 className="w-full bg-slate-100 dark:bg-slate-800 rounded-lg pl-10 pr-4 py-2.5 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-purple-500"
                                                 value={searchQuery}
                                                 onChange={e => setSearchQuery(e.target.value)}
                                             />
                                         </div>
 
-                                        {isSearchingSongs && (
-                                            <div className="text-center py-2 text-xs text-purple-600 dark:text-purple-400 font-medium">
-                                                Buscando todas as músicas e versões no sistema...
-                                            </div>
-                                        )}
-
                                         <div className="border border-slate-200 dark:border-slate-800 rounded-xl divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden">
                                             {(() => {
                                                 const candidateMap = new Map();
-                                                dbSearchResults.forEach(s => { if (s && s.id) candidateMap.set(s.id, s); });
                                                 availableSongs.forEach(s => { if (s && s.id && !candidateMap.has(s.id)) candidateMap.set(s.id, s); });
                                                 songs.forEach(s => { if (s && s.id && !candidateMap.has(s.id)) candidateMap.set(s.id, s); });
 

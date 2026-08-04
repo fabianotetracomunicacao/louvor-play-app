@@ -116,9 +116,9 @@ export function PlaylistPage() {
                 const { data, error } = await supabase
                     .from('songs')
                     .select('*, creator:created_by(email, name, full_name)')
-                    .or(`title.ilike.%${songSearchQuery}%,artist.ilike.%${songSearchQuery}%`)
+                    .or(`title.ilike.%${songSearchQuery}%,artist.ilike.%${songSearchQuery}%,version_label.ilike.%${songSearchQuery}%`)
                     .is('deleted_at', null)
-                    .limit(40);
+                    .limit(50);
 
                 if (!error && data) {
                     setDbSongResults(data.map(mapSongFromDb));
@@ -952,11 +952,36 @@ export function PlaylistPage() {
         await updatePlaylistOrder(newItems, selectedPlaylist.id);
     };
 
-    const filteredSongs = allSongs.filter(song =>
-        song && song.id &&
-        (song.title?.toLowerCase().includes(songSearchQuery.toLowerCase()) ||
-            song.artist?.toLowerCase().includes(songSearchQuery.toLowerCase()))
-    );
+    const filteredSongs = (() => {
+        const candidateMap = new Map();
+
+        // 1. Live DB search results
+        dbSongResults.forEach(s => {
+            if (s && s.id) candidateMap.set(s.id, s);
+        });
+
+        // 2. Preloaded songs
+        allSongs.forEach(s => {
+            if (s && s.id && !candidateMap.has(s.id)) candidateMap.set(s.id, s);
+        });
+
+        const candidatePool = Array.from(candidateMap.values());
+        const q = songSearchQuery.trim().toLowerCase();
+
+        if (!q) return candidatePool;
+
+        return candidatePool.filter(s =>
+            s && s.id &&
+            (
+                (s.title && s.title.toLowerCase().includes(q)) ||
+                (s.artist && s.artist.toLowerCase().includes(q)) ||
+                (s.version_label && s.version_label.toLowerCase().includes(q)) ||
+                (s.creatorName && s.creatorName.toLowerCase().includes(q)) ||
+                (s.creator?.name && s.creator.name.toLowerCase().includes(q)) ||
+                (s.creator?.email && s.creator.email.toLowerCase().includes(q))
+            )
+        );
+    })();
 
     const isOwner = selectedPlaylist && user?.id === selectedPlaylist.owner_id;
 
@@ -1865,20 +1890,29 @@ export function PlaylistPage() {
                                             <Search className="absolute left-3 top-2.5 text-slate-400" size={18} />
                                             <input
                                                 type="text"
-                                                placeholder="Buscar música..."
+                                                placeholder="Buscar qualquer música ou versão no sistema..."
                                                 value={songSearchQuery}
                                                 onChange={(e) => setSongSearchQuery(e.target.value)}
                                                 className="w-full bg-slate-100 dark:bg-slate-800 pl-10 pr-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                                                 autoFocus
                                             />
                                         </div>
+                                        {isSearchingDbSongs && (
+                                            <div className="text-center py-1.5 text-xs text-purple-600 dark:text-purple-400 font-medium animate-pulse">
+                                                Buscando todas as músicas no sistema...
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="flex-1 overflow-y-auto p-2">
-                                        {filteredSongs.map(song => {
-                                            const existingItem = selectedPlaylist.items?.find(item => item.song?.id === song.id);
-                                            // console.log('DEBUG ITEM:', existingItem);
-                                            const isAlreadyAdded = !!existingItem;
-                                            return (
+                                         {filteredSongs.length === 0 ? (
+                                             <div className="text-center py-8 text-xs text-slate-400">
+                                                 {isSearchingDbSongs ? 'Pesquisando...' : 'Nenhuma música encontrada.'}
+                                             </div>
+                                         ) : (
+                                             filteredSongs.map(song => {
+                                                 const existingItem = selectedPlaylist.items?.find(item => item.song?.id === song.id || item.song_id === song.id);
+                                                 const isAlreadyAdded = !!existingItem;
+                                                 return (
                                                 <div
                                                     key={song.id}
                                                     className={`w-full text-left p-3 rounded-xl flex justify-between items-center group transition 
@@ -1923,7 +1957,8 @@ export function PlaylistPage() {
                                                     )}
                                                 </div>
                                             );
-                                        })}
+                                        })
+                                        )}
                                     </div>
                                 </div>
                             </div>

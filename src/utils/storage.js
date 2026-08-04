@@ -1245,7 +1245,7 @@ export async function createNotification(userId, title, message, type = 'info', 
  * @param {string} userId 
  * @param {string} role (optional)
  */
-export async function addUserToSetlistScale(setlistId, userId, role = null) {
+export async function addUserToSetlistScale(setlistId, userId, role = null, options = { sendWhatsApp: true }) {
     // 1. Add/Update Scale
     const { data, error } = await supabase
         .from('setlist_scales')
@@ -1815,7 +1815,7 @@ export async function updatePlaylistOrder(items, playlistId) {
 
 // --- HELPERS ---
 
-function mapSongFromDb(dbSong) {
+export function mapSongFromDb(dbSong) {
     if (!dbSong) return null;
 
     let creatorName = null;
@@ -1837,7 +1837,7 @@ function mapSongFromDb(dbSong) {
         title: dbSong.title,
         artist: dbSong.artist,
         content: dbSong.content,
-        originalKey: dbSong.original_key,
+        originalKey: dbSong.original_key || dbSong.originalKey,
         fontSize: dbSong.font_size,
         tabFontSize: dbSong.tab_font_size, // Map NEW column
         lineSpacing: dbSong.line_spacing,
@@ -1850,6 +1850,7 @@ function mapSongFromDb(dbSong) {
             return null;
         }).filter(Boolean),
         createdBy: dbSong.created_by, // UUID
+        created_by: dbSong.created_by,
         creatorName: creatorName, // Derived Name
         creator: dbSong.creator || null, // Ensure RepertoirePage can access creator.name/email
         duration: dbSong.duration,
@@ -1859,6 +1860,10 @@ function mapSongFromDb(dbSong) {
         isOfficial,
         projectionContent: dbSong.projection_content,
         type: dbSong.type || 'chords', // NEW: chords or lyrics
+        version_label: dbSong.version_label || dbSong.versionLabel || '',
+        version_tone: dbSong.version_tone || dbSong.versionTone || dbSong.original_key || dbSong.originalKey || '',
+        version_verified: dbSong.version_verified ?? dbSong.versionVerified ?? false,
+        created_at: dbSong.created_at,
 
         // NEW PROJECTION FIELDS
         projBgType: dbSong.proj_bg_type || 'global',

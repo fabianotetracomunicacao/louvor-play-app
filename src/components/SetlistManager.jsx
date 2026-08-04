@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Shuffle, List, Music, Plus, Trash2, ArrowRight, RotateCcw, Check, GripVertical, CheckCircle2, XCircle, Clock, Send } from 'lucide-react';
+import { X, Save, Shuffle, List, Music, Plus, Trash2, ArrowRight, RotateCcw, Check, GripVertical, CheckCircle2, XCircle, Clock, Send, MessageSquare } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
-import { getSongFunctions, searchProfiles, getSetlistScale, addUserToSetlistScale, removeUserFromSetlistScale, getPlaylistMembers, getInstruments } from '../utils/storage';
+import { getSongFunctions, searchProfiles, getSetlistScale, addUserToSetlistScale, removeUserFromSetlistScale, getPlaylistMembers, getInstruments, mapSongFromDb } from '../utils/storage';
 import { WhatsAppService } from '../services/WhatsAppService';
 import { supabase } from '../supabaseClient';
 import { Portal } from './Portal';
@@ -30,7 +30,7 @@ const getTimeInputValue = (value) => {
     return match ? `${match[1]}:${match[2]}` : '';
 };
 
-export function SetlistManager({ playlistId, songs, onClose, onSave, initialData }) {
+export function SetlistManager({ playlistId, songs = [], availableSongs = [], onClose, onSave, initialData }) {
 
     const [mode, setMode] = useState(initialData ? 'manual' : 'selection'); // Start in manual selection if editing
     const [setlistName, setSetlistName] = useState(initialData?.name || '');
@@ -43,6 +43,8 @@ export function SetlistManager({ playlistId, songs, onClose, onSave, initialData
 
     // Scale (People)
     const [scaleMembers, setScaleMembers] = useState([]);
+    const [sendWhatsApp, setSendWhatsApp] = useState(true);
+    const [initialScaleUserIds, setInitialScaleUserIds] = useState(new Set());
     const [showUserSearch, setShowUserSearch] = useState(false);
     const [userQuery, setUserQuery] = useState('');
     const [userResults, setUserResults] = useState([]);
@@ -520,7 +522,7 @@ export function SetlistManager({ playlistId, songs, onClose, onSave, initialData
                     {/* Header */}
                     <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 sticky top-0 z-20">
                         <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                            <List className="text-purple-600" /> {initialData ? 'Editar Setlist' : 'Novo Setlist (repertório)'}
+                            <List className="text-purple-600" /> {initialData ? 'Editar Setlist' : 'Novo Setlist'}
                         </h2>
                         <button onClick={onClose} className="p-2 -mr-2 text-slate-400 hover:text-slate-600 dark:hover:text-white transition rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"><X /></button>
                     </div>
@@ -772,45 +774,100 @@ export function SetlistManager({ playlistId, songs, onClose, onSave, initialData
                                             <Search className="absolute left-3 top-3 text-slate-400" size={18} />
                                             <input
                                                 type="text"
-                                                placeholder="Buscar na playlist..."
+                                                placeholder="Buscar música ou versão no sistema..."
                                                 className="w-full bg-slate-100 dark:bg-slate-800 rounded-lg pl-10 pr-4 py-2.5 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-purple-500"
                                                 value={searchQuery}
                                                 onChange={e => setSearchQuery(e.target.value)}
                                             />
                                         </div>
+
+                                        {isSearchingSongs && (
+                                            <div className="text-center py-2 text-xs text-purple-600 dark:text-purple-400 font-medium">
+                                                Buscando todas as músicas e versões no sistema...
+                                            </div>
+                                        )}
+
                                         <div className="border border-slate-200 dark:border-slate-800 rounded-xl divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden">
-                                            {songs
-                                                .filter(s => s.title.toLowerCase().includes(searchQuery.toLowerCase()))
-                                                .map(song => {
+                                            {(() => {
+                                                const candidateMap = new Map();
+                                                dbSearchResults.forEach(s => { if (s && s.id) candidateMap.set(s.id, s); });
+                                                availableSongs.forEach(s => { if (s && s.id && !candidateMap.has(s.id)) candidateMap.set(s.id, s); });
+                                                songs.forEach(s => { if (s && s.id && !candidateMap.has(s.id)) candidateMap.set(s.id, s); });
+
+                                                const candidatePool = Array.from(candidateMap.values());
+                                                const q = searchQuery.trim().toLowerCase();
+
+                                                const filteredCandidates = q
+                                                    ? candidatePool.filter(s =>
+                                                        (s.title && s.title.toLowerCase().includes(q)) ||
+                                                        (s.artist && s.artist.toLowerCase().includes(q)) ||
+                                                        (s.version_label && s.version_label.toLowerCase().includes(q)) ||
+                                                        (s.creatorName && s.creatorName.toLowerCase().includes(q)) ||
+                                                        (s.creator?.name && s.creator.name.toLowerCase().includes(q)) ||
+                                                        (s.creator?.email && s.creator.email.toLowerCase().includes(q))
+                                                    )
+                                                    : candidatePool;
+
+                                                if (filteredCandidates.length === 0) {
+                                                    return (
+                                                        <div className="p-4 text-center text-sm text-slate-400">
+                                                            {searchQuery ? 'Nenhuma música ou versão encontrada.' : 'Nenhuma música disponível.'}
+                                                        </div>
+                                                    );
+                                                }
+
+                                                return filteredCandidates.map(song => {
                                                     const selectionCount = selectedSongs.filter(s => s.id === song.id).length;
                                                     const isSelected = selectionCount > 0;
+                                                    const versionLabel = song.version_label || '';
+                                                    const versionTone = song.version_tone || song.originalKey || '';
+                                                    const editorName = song.creatorName || (song.creator ? (song.creator.name || song.creator.email?.split('@')[0]) : '');
+
                                                     return (
                                                         <div
                                                             key={song.id}
                                                             onClick={() => addSongManual(song)}
                                                             className={`p-3 cursor-pointer flex justify-between items-center transition ${isSelected ? 'bg-purple-50 dark:bg-purple-900/10' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}
                                                         >
-                                                            <div className="flex-1">
-                                                                <div className="flex items-center gap-2">
+                                                            <div className="flex-1 min-w-0 pr-2">
+                                                                <div className="flex items-center gap-2 flex-wrap">
                                                                     {song.type === 'lyrics' ? (
-                                                                        <FileText size={14} className="text-amber-500" />
+                                                                        <FileText size={14} className="text-amber-500 shrink-0" />
                                                                     ) : (
-                                                                        <Music size={14} className="text-purple-500" />
+                                                                        <Music size={14} className="text-purple-500 shrink-0" />
                                                                     )}
-                                                                    <span className={`font-bold ${isSelected ? 'text-purple-600 dark:text-purple-400' : 'text-slate-700 dark:text-slate-200'}`}>{song.title}</span>
-                                                                    {isSelected && <span className="text-[10px] font-bold bg-purple-100 dark:bg-purple-800 text-purple-700 dark:text-purple-200 px-1.5 py-0.5 rounded-full">{selectionCount}x</span>}
+                                                                    <span className={`font-bold ${isSelected ? 'text-purple-600 dark:text-purple-400' : 'text-slate-700 dark:text-slate-200'}`}>
+                                                                        {song.title}
+                                                                    </span>
+                                                                    {isSelected && (
+                                                                        <span className="text-[10px] font-bold bg-purple-100 dark:bg-purple-800 text-purple-700 dark:text-purple-200 px-1.5 py-0.5 rounded-full">
+                                                                            {selectionCount}x
+                                                                        </span>
+                                                                    )}
+                                                                    {song.isOfficial && (
+                                                                        <span className="text-[10px] font-bold bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded-full">
+                                                                            Oficial
+                                                                        </span>
+                                                                    )}
                                                                 </div>
-                                                                <div className="text-xs text-slate-500">{song.artist}</div>
+                                                                <div className="text-xs text-slate-500 flex items-center gap-2 mt-0.5 flex-wrap">
+                                                                    <span>{song.artist}</span>
+                                                                    {versionTone && <span className="text-purple-600 dark:text-purple-400 font-semibold">• Tom: {versionTone}</span>}
+                                                                    {versionLabel && <span className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[11px]">• {versionLabel}</span>}
+                                                                    {editorName && <span className="text-slate-400">• Por: {editorName}</span>}
+                                                                </div>
                                                             </div>
-                                                            <div className={`p-1.5 rounded-lg ${isSelected ? 'bg-purple-100 dark:bg-purple-900 text-purple-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
+                                                            <div className={`p-1.5 rounded-lg shrink-0 ${isSelected ? 'bg-purple-100 dark:bg-purple-900 text-purple-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
                                                                 {isSelected ? <Check size={16} /> : <Plus size={16} />}
                                                             </div>
                                                         </div>
                                                     );
-                                                })}
+                                                });
+                                            })()}
                                         </div>
                                     </div>
                                 )}
+                                
 
                                 {mode === 'auto' && (
                                     <div className="flex flex-col space-y-3">

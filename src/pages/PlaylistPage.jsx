@@ -100,6 +100,38 @@ export function PlaylistPage() {
     const [isAddingSong, setIsAddingSong] = useState(false);
     const [songSearchQuery, setSongSearchQuery] = useState('');
     const [allSongs, setAllSongs] = useState([]);
+    const [dbSongResults, setDbSongResults] = useState([]);
+    const [isSearchingDbSongs, setIsSearchingDbSongs] = useState(false);
+
+    // Dynamic Supabase song search for Playlist modal
+    useEffect(() => {
+        if (!songSearchQuery.trim() || songSearchQuery.trim().length < 2) {
+            setDbSongResults([]);
+            return;
+        }
+
+        const timer = setTimeout(async () => {
+            setIsSearchingDbSongs(true);
+            try {
+                const { data, error } = await supabase
+                    .from('songs')
+                    .select('*, creator:created_by(email, name, full_name)')
+                    .or(`title.ilike.%${songSearchQuery}%,artist.ilike.%${songSearchQuery}%`)
+                    .is('deleted_at', null)
+                    .limit(40);
+
+                if (!error && data) {
+                    setDbSongResults(data.map(mapSongFromDb));
+                }
+            } catch (err) {
+                console.error("Error searching DB songs in PlaylistPage:", err);
+            } finally {
+                setIsSearchingDbSongs(false);
+            }
+        }, 400);
+
+        return () => clearTimeout(timer);
+    }, [songSearchQuery]);
 
 
     // Social State
@@ -1220,7 +1252,7 @@ export function PlaylistPage() {
                             onClick={() => setPlaylistView('setlists')}
                             className={`pb-3 font-bold text-sm flex items-center gap-2 transition border-b-2 ${playlistView === 'setlists' ? 'border-purple-600 text-purple-600' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
                         >
-                            <List size={18} /> Setlists (Repertório)
+                            <List size={18} /> Setlists
                         </button>
                     </div>
 
@@ -1444,7 +1476,7 @@ export function PlaylistPage() {
                                         onClick={handleNewSetlist}
                                         className="w-full py-4 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl mb-6 text-slate-500 hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/10 hover:text-purple-600 font-bold flex items-center justify-center gap-2 transition"
                                     >
-                                        <Plus size={20} /> Novo Setlist (repertório)
+                                        <Plus size={20} /> Novo Setlist
                                     </button>
                                 )}
 

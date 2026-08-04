@@ -6,7 +6,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import { 
     Users, UserPlus, Mail, Shield, AlertCircle, 
     CheckCircle, XCircle, Clock, Trash2, Settings, 
-    UserCheck, ArrowUpRight, Plus, RefreshCw, Loader, CreditCard,
+    UserCheck, Activity, ArrowUpRight, Plus, RefreshCw, Loader, CreditCard,
     Copy, Link as LinkIcon, Send
 } from 'lucide-react';
 
@@ -280,7 +280,7 @@ export function ChurchAdminPage() {
                     title="Líderes de Adoração" 
                     occupied={capacity.leader.occupied} 
                     limit={capacity.leader.limit} 
-                    icon={Activity} 
+                    icon={UserCheck} 
                     color="bg-blue-500" 
                 />
                 <CapacityCard 

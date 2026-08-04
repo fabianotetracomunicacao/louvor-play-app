@@ -6,7 +6,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import { 
     Users, UserPlus, Mail, Shield, AlertCircle, 
     CheckCircle, XCircle, Clock, Trash2, Settings, 
-    Activity, ArrowUpRight, Plus, RefreshCw, Loader, CreditCard,
+    UserCheck, ArrowUpRight, Plus, RefreshCw, Loader, CreditCard,
     Copy, Link as LinkIcon, Send
 } from 'lucide-react';
 
@@ -488,7 +488,7 @@ export function ChurchAdminPage() {
                                             onClick={() => setInviteRole('WORSHIP_LEADER')}
                                             className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${inviteRole === 'WORSHIP_LEADER' ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20' : 'border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 hover:border-slate-200'}`}
                                         >
-                                            <Activity size={20} className={inviteRole === 'WORSHIP_LEADER' ? 'text-blue-600' : 'text-slate-400'} />
+                                            <UserCheck size={20} className={inviteRole === 'WORSHIP_LEADER' ? 'text-blue-600' : 'text-slate-400'} />
                                             <span className={`text-xs font-black uppercase ${inviteRole === 'WORSHIP_LEADER' ? 'text-blue-600' : 'text-slate-500'}`}>Líder</span>
                                         </button>
                                     </div>

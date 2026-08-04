@@ -61,6 +61,12 @@ export function CompleteProfilePage() {
 
         setLoading(true);
 
+        if (!phone || !phone.trim()) {
+            showToast('O número de WhatsApp / Telefone é obrigatório.', 'warning');
+            setLoading(false);
+            return;
+        }
+
         try {
             // 1. Update Auth User Password (if provided)
             if (password) {
@@ -87,13 +93,34 @@ export function CompleteProfilePage() {
 
             const normalizedPhone = normalizePhone(phone);
 
+            // Sync role with active church membership if not super_admin
+            const { data: membership } = await supabase
+                .from('church_user_memberships')
+                .select('role')
+                .eq('user_id', user.id)
+                .eq('status', 'active')
+                .maybeSingle();
+
+            const { data: prof } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', user.id)
+                .maybeSingle();
+
+            const isSuper = prof?.role === 'super_admin';
+
+            const updateObj = {
+                phone: normalizedPhone,
+                whatsapp: normalizedPhone,
+                instrument: instrument
+            };
+            if (!isSuper && membership?.role) {
+                updateObj.role = membership.role;
+            }
+
             const { error: profileError } = await supabase
                 .from('profiles')
-                .update({
-                    phone: normalizedPhone,
-                    whatsapp: normalizedPhone,
-                    instrument: instrument
-                })
+                .update(updateObj)
                 .eq('id', user.id);
                 
             if (profileError) throw profileError;

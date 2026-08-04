@@ -331,10 +331,16 @@ export const InvitationService = {
             console.warn('Invitation record update failed but membership was created:', inviteError);
         }
 
-        // 4. Set as Active Church
+        // 4. Set as Active Church and update profile role if not platform super_admin
+        const { data: currentProf } = await supabase.from('profiles').select('role').eq('id', userId).maybeSingle();
+        const isSuper = currentProf?.role === 'super_admin';
+
         await supabase
             .from('profiles')
-            .update({ active_church_id: invite.church_id })
+            .update({
+                active_church_id: invite.church_id,
+                ...(isSuper ? {} : { role: invite.role })
+            })
             .eq('id', userId);
 
         return invite;

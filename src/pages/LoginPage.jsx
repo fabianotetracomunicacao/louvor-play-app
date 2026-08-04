@@ -201,7 +201,7 @@ export function LoginPage({ defaultMode }) {
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Telefone</label>
-                                    <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} className="w-full bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white px-4 py-2 rounded-lg" placeholder="(00) 00000-0000" />
+                                    <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} className="w-full bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white px-4 py-2 rounded-lg" placeholder="(00) 00000-0000" required />
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">

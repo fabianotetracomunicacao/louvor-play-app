@@ -445,6 +445,7 @@ export function SetlistManager({ playlistId, songs = [], availableSongs = [], on
             scheduledDate: scheduledDate || null,
             scheduledTime: scheduledTime || null,
             isCollaborative: isCollaborative,
+            sendWhatsApp: sendWhatsApp,
             scaleMembers: scaleMembers.map(m => ({ userId: m.user.id, role: m.role })), // Pass simple array of IDs/Roles
             items: selectedSongs.map((s, i) => {
                 const isMedia = s.isMediaBlock || (s.id && String(s.id).startsWith('media_block_'));
@@ -517,10 +518,10 @@ export function SetlistManager({ playlistId, songs = [], availableSongs = [], on
     return (
         <Portal>
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] md:p-4 animate-in fade-in duration-300">
-                <div className="bg-white dark:bg-slate-900 w-full h-full md:h-auto md:max-w-4xl md:max-h-[85vh] md:rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
+                <div className="bg-white dark:bg-slate-900 w-full h-full md:w-[95vw] md:max-w-6xl md:h-[92vh] md:rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-300 border border-slate-200 dark:border-slate-800">
 
                     {/* Header */}
-                    <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 sticky top-0 z-20">
+                    <div className="p-4 md:px-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 sticky top-0 z-20">
                         <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                             <List className="text-purple-600" /> {initialData ? 'Editar Setlist' : 'Novo Setlist'}
                         </h2>
@@ -528,212 +529,276 @@ export function SetlistManager({ playlistId, songs = [], availableSongs = [], on
                     </div>
 
                     {/* Content Section - Scrollable Wrapper */}
-                    <div className="flex-1 overflow-y-auto overscroll-contain flex flex-col p-5 md:p-6 bg-white dark:bg-slate-900">
+                    <div className="flex-1 overflow-y-auto overscroll-contain flex flex-col p-5 md:p-6 bg-white dark:bg-slate-900 space-y-6">
                         <div className="flex flex-col min-h-full">
-                            {/* Name Input */}
-                            <div className="mb-4">
-                                <label className="block text-sm font-bold text-slate-500 mb-1">Nome do Setlist</label>
-                                <input
-                                    type="text"
-                                    className="w-full text-lg font-bold bg-transparent border-b-2 border-slate-200 dark:border-slate-700 focus:border-purple-600 outline-none py-2 text-slate-900 dark:text-white placeholder:text-slate-300"
-                                    placeholder="Ex: Culto Domingo - 27/12"
-                                    value={setlistName}
-                                    onChange={e => setSetlistName(e.target.value)}
-                                    autoFocus
-                                />
-                            </div>
+                            
+                            {/* Top 2 Columns Section */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 bg-slate-50/50 dark:bg-slate-800/20 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 mb-6">
+                                {/* Left Column: Nome & Descrição */}
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Nome do Setlist *</label>
+                                        <input
+                                            type="text"
+                                            className="w-full text-base font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-purple-500 placeholder:text-slate-400"
+                                            placeholder="Ex: Culto Domingo - 27/12"
+                                            value={setlistName}
+                                            onChange={e => setSetlistName(e.target.value)}
+                                            autoFocus
+                                        />
+                                    </div>
 
-                            {/* Description Input */}
-                            <div className="mb-6">
-                                <label className="block text-sm font-bold text-slate-500 mb-1">Descrição (Opcional)</label>
-                                <textarea
-                                    className="w-full bg-slate-100 dark:bg-slate-800 rounded-lg p-3 text-sm text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-purple-500 h-20 resize-none"
-                                    placeholder="Adicione detalhes, observações ou avisos..."
-                                    value={description}
-                                    onChange={e => setDescription(e.target.value)}
-                                />
-                            </div>
-
-                            {/* Scheduling & Permissions Section */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                                {/* Date Picker */}
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-500 mb-1 flex items-center gap-1">
-                                        <Calendar size={14} /> Data Prevista
-                                    </label>
-                                    <input
-                                        type="date"
-                                        className="w-full bg-slate-100 dark:bg-slate-800 rounded-lg p-3 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-purple-500"
-                                        value={scheduledDate}
-                                        onChange={e => setScheduledDate(e.target.value)}
-                                    />
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Descrição (Opcional)</label>
+                                        <textarea
+                                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-purple-500 h-24 resize-none placeholder:text-slate-400"
+                                            placeholder="Adicione detalhes, observações ou avisos sobre o culto..."
+                                            value={description}
+                                            onChange={e => setDescription(e.target.value)}
+                                        />
+                                    </div>
                                 </div>
 
-                                {/* Time Picker */}
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-500 mb-1 flex items-center gap-1">
-                                        <Clock size={14} /> Horário
-                                    </label>
-                                    <input
-                                        type="time"
-                                        className="w-full bg-slate-100 dark:bg-slate-800 rounded-lg p-3 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-purple-500"
-                                        value={scheduledTime}
-                                        onChange={e => setScheduledTime(e.target.value)}
-                                    />
-                                </div>
-
-                                {/* Permissions */}
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-500 mb-1 flex items-center gap-1">
-                                        <Shield size={14} /> Permissões
-                                    </label>
-                                    <div className="flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
-                                        <div className="flex-1">
-                                            <div className="text-sm font-bold text-slate-700 dark:text-slate-200">Edição Colaborativa</div>
-                                            <div className="text-xs text-slate-500">Permitir que membros editem</div>
+                                {/* Right Column: Data, Horário, WhatsApp, Permissões */}
+                                <div className="space-y-4">
+                                    {/* Date & Time Row */}
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 flex items-center gap-1">
+                                                <Calendar size={13} /> Data Prevista
+                                            </label>
+                                            <input
+                                                type="date"
+                                                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-sm text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-purple-500"
+                                                value={scheduledDate}
+                                                onChange={e => setScheduledDate(e.target.value)}
+                                            />
                                         </div>
 
-                                        <button
-                                            onClick={() => setIsCollaborative(!isCollaborative)}
-                                            className={`w-12 h-6 rounded-full transition relative ${isCollaborative ? 'bg-purple-600' : 'bg-slate-300 dark:bg-slate-600'}`}
-                                        >
-                                            <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-all ${isCollaborative ? 'left-7' : 'left-1'}`} />
-                                        </button>
+                                        <div>
+                                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 flex items-center gap-1">
+                                                <Clock size={13} /> Horário
+                                            </label>
+                                            <input
+                                                type="time"
+                                                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-sm text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-purple-500"
+                                                value={scheduledTime}
+                                                onChange={e => setScheduledTime(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Toggles Row */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                                        {/* WhatsApp Toggle */}
+                                        <div className="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xs">
+                                            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-600 shrink-0">
+                                                <Send size={16} />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">Notificação WhatsApp</div>
+                                                <div className="text-[10px] text-slate-500 truncate">Enviar ao escalar</div>
+                                            </div>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => setSendWhatsApp(!sendWhatsApp)}
+                                                className={`w-11 h-6 rounded-full transition relative shrink-0 ${sendWhatsApp ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+                                            >
+                                                <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-all ${sendWhatsApp ? 'left-6' : 'left-1'}`} />
+                                            </button>
+                                        </div>
+
+                                        {/* Edição Colaborativa Toggle */}
+                                        <div className="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xs">
+                                            <div className="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-950/50 flex items-center justify-center text-purple-600 shrink-0">
+                                                <Shield size={16} />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">Edição Colaborativa</div>
+                                                <div className="text-[10px] text-slate-500 truncate">Membros podem editar</div>
+                                            </div>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsCollaborative(!isCollaborative)}
+                                                className={`w-11 h-6 rounded-full transition relative shrink-0 ${isCollaborative ? 'bg-purple-600' : 'bg-slate-300 dark:bg-slate-600'}`}
+                                            >
+                                                <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-all ${isCollaborative ? 'left-6' : 'left-1'}`} />
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Scale (Escala) Section */}
-                            <div className="mb-6 p-4 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/50 relative">
-                                <div className="flex justify-between items-center mb-3">
-                                    <h3 className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                                        <User size={18} className="text-purple-600" /> Escala (Músicos & Cantores)
+                            {/* Scale (Escala) Section - Grid of Member Photo Cards */}
+                            <div className="mb-6 p-5 border border-slate-200 dark:border-slate-700 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 space-y-4">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                    <h3 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 text-base">
+                                        <User size={20} className="text-purple-600" /> Escala de Músicos & Cantores
+                                        {scaleMembers.length > 0 && (
+                                            <span className="text-xs bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-full font-extrabold">
+                                                {scaleMembers.length} escalado(s)
+                                            </span>
+                                        )}
                                     </h3>
-                                </div>
 
-                                {/* Inline Search Input */}
-                                <div className="relative mb-3">
-                                    <div className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-purple-500">
-                                        <Search size={16} className="text-slate-400" />
+                                    {/* Quick Filter */}
+                                    <div className="relative w-full sm:w-64">
+                                        <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
                                         <input
                                             type="text"
-                                            className="flex-1 bg-transparent outline-none text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400"
-                                            placeholder="Buscar membro..."
+                                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-purple-500 placeholder:text-slate-400"
+                                            placeholder="Filtrar por nome..."
                                             value={userQuery}
                                             onChange={e => setUserQuery(e.target.value)}
-                                            onFocus={() => {
-                                                setShowUserSearch(true);
-                                                // Trigger suggestion update if empty
-                                                if (userQuery === '') {
-                                                    const existingIds = new Set(scaleMembers.map(m => m.user.id));
-                                                    setUserResults(playlistMembers.filter(u => !existingIds.has(u.id)));
-                                                }
-                                            }}
                                         />
                                         {userQuery && (
-                                            <button onClick={() => { setUserQuery(''); setShowUserSearch(false); }} className="text-slate-400 hover:text-slate-600">
-                                                <X size={14} />
+                                            <button onClick={() => setUserQuery('')} className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600">
+                                                <X size={12} />
                                             </button>
                                         )}
                                     </div>
+                                </div>
 
-                                    {/* Dropdown Results */}
-                                    {showUserSearch && (userQuery.length > 0 || userResults.length > 0) && (
-                                        <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-20 max-h-60 overflow-y-auto overscroll-contain">
-                                            {userResults.length > 0 && <div className="text-[10px] uppercase font-bold text-slate-400 px-3 py-2 bg-slate-50 dark:bg-slate-800/50 sticky top-0">{userQuery ? 'Resultados' : 'Sugestões do Time'}</div>}
+                                {/* Active Escalados Badges */}
+                                {scaleMembers.length > 0 && (
+                                    <div className="space-y-1.5">
+                                        <div className="text-[10px] uppercase font-extrabold tracking-wider text-slate-400">Escalados neste culto</div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {scaleMembers.map(member => {
+                                                const status = member.status || 'PENDING';
+                                                const isConfirmed = status === 'CONFIRMED';
+                                                const isDeclined = status === 'DECLINED';
+                                                
+                                                let badgeStyle = 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200';
+                                                if (isConfirmed) {
+                                                    badgeStyle = 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-400 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200';
+                                                } else if (isDeclined) {
+                                                    badgeStyle = 'bg-rose-50 dark:bg-rose-950/40 border-rose-400 dark:border-rose-700 text-rose-800 dark:text-rose-200';
+                                                }
 
-                                            {userResults.length > 0 ? (
-                                                userResults.map(user => (
-                                                    <button
-                                                        key={user.id}
-                                                        onClick={() => addToScale(user)}
-                                                        className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition text-left border-b border-slate-100 dark:border-slate-800 last:border-0"
-                                                    >
-                                                        <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden flex-shrink-0">
-                                                            {user.avatar_url ? (
-                                                                <img src={user.avatar_url} alt={user.name} className="w-full h-full object-cover" />
+                                                return (
+                                                    <div key={member.id} className={`flex items-center gap-2 pl-1.5 pr-2 py-1.5 rounded-full border shadow-xs transition ${badgeStyle}`}>
+                                                        <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden shrink-0">
+                                                            {member.user?.avatar_url ? (
+                                                                <img src={member.user.avatar_url} alt={member.user.name} className="w-full h-full object-cover" />
                                                             ) : (
-                                                                <div className="w-full h-full flex items-center justify-center text-xs font-bold text-slate-500">
-                                                                    {(user.name || '?').charAt(0)}
+                                                                <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-slate-500">
+                                                                    {(member.user?.name || '?').charAt(0).toUpperCase()}
                                                                 </div>
                                                             )}
                                                         </div>
-                                                        <div>
-                                                            <div className="font-bold text-sm text-slate-900 dark:text-white">{user.name || 'Sem Nome'}</div>
-                                                            <div className="text-xs text-slate-500">{user.email}</div>
-                                                        </div>
-                                                        <Plus size={16} className="ml-auto text-purple-600" />
-                                                    </button>
-                                                ))
-                                            ) : (
-                                                <div className="p-4 text-center text-xs text-slate-500">
-                                                    {userQuery.length < 3 ? 'Digite para buscar...' : 'Nenhum usuário encontrado.'}
-                                                </div>
-                                            )}
+                                                        <span className="text-xs font-bold truncate max-w-[90px]">
+                                                            {member.user?.name?.split(' ')[0] || member.user?.email}
+                                                        </span>
+                                                        
+                                                        <span className="flex items-center gap-1 text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded-md bg-white/80 dark:bg-slate-800/80 shadow-xs" title={`Status: ${status}`}>
+                                                            {isConfirmed && <CheckCircle2 size={11} className="text-emerald-500" />}
+                                                            {isDeclined && <XCircle size={11} className="text-rose-500" />}
+                                                            {!isConfirmed && !isDeclined && <Clock size={11} className="text-amber-500" />}
+                                                            <span>{isConfirmed ? 'OK' : isDeclined ? 'Recusou' : 'Pendente'}</span>
+                                                        </span>
+
+                                                        <button
+                                                            onClick={() => editMemberRole(member)}
+                                                            className="bg-purple-100 dark:bg-purple-900/40 text-[10px] font-extrabold text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 px-2 py-0.5 hover:bg-purple-200 dark:hover:bg-purple-900/60 rounded-md truncate max-w-[100px]"
+                                                            title="Alterar Função"
+                                                        >
+                                                            {member.role}
+                                                        </button>
+
+                                                        <button
+                                                            onClick={() => removeFromScale(member.id)}
+                                                            className="w-5 h-5 flex items-center justify-center rounded-full text-slate-400 hover:text-rose-600 hover:bg-white dark:hover:bg-slate-800 transition"
+                                                            title="Remover da escala"
+                                                        >
+                                                            <X size={12} />
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Team Member Photo & Name Card Grid (Side-by-Side Selection) */}
+                                <div className="space-y-2 pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                                    <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
+                                        <span>Clique na pessoa para escalar:</span>
+                                        <span className="text-[10px] text-slate-400 font-normal">{playlistMembers.length} membro(s) no time</span>
+                                    </div>
+
+                                    {playlistMembers.length === 0 ? (
+                                        <div className="text-center py-6 text-xs text-slate-400">Nenhum membro cadastrado nesta igreja/playlist.</div>
+                                    ) : (
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 max-h-56 overflow-y-auto pr-1 overscroll-contain">
+                                            {(() => {
+                                                const existingIds = new Set(scaleMembers.map(m => m.user.id));
+                                                const q = userQuery.trim().toLowerCase();
+
+                                                const filtered = playlistMembers.filter(u => {
+                                                    if (!q) return true;
+                                                    return (u.name && u.name.toLowerCase().includes(q)) || (u.email && u.email.toLowerCase().includes(q));
+                                                });
+
+                                                if (filtered.length === 0) {
+                                                    return <div className="col-span-full py-4 text-center text-xs text-slate-400">Nenhum membro encontrado.</div>;
+                                                }
+
+                                                return filtered.map(user => {
+                                                    const isAlreadyScaled = existingIds.has(user.id);
+                                                    const mainRole = user.instrument || (user.available_instruments && user.available_instruments[0]) || 'Vocal';
+
+                                                    return (
+                                                        <button
+                                                            key={user.id}
+                                                            disabled={isAlreadyScaled}
+                                                            onClick={() => addToScale(user)}
+                                                            className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center group relative overflow-hidden ${
+                                                                isAlreadyScaled
+                                                                    ? 'bg-slate-100 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 opacity-60 cursor-not-allowed'
+                                                                    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-purple-500 hover:bg-purple-50/50 dark:hover:bg-purple-900/20 hover:shadow-md cursor-pointer'
+                                                            }`}
+                                                        >
+                                                            {/* Photo / Avatar */}
+                                                            <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden mb-2 relative flex items-center justify-center shadow-xs border border-slate-200 dark:border-slate-600 group-hover:scale-105 transition-transform">
+                                                                {user.avatar_url ? (
+                                                                    <img src={user.avatar_url} alt={user.name} className="w-full h-full object-cover" />
+                                                                ) : (
+                                                                    <span className="font-extrabold text-sm text-purple-600 dark:text-purple-300">
+                                                                        {(user.name || '?').charAt(0).toUpperCase()}
+                                                                    </span>
+                                                                )}
+                                                                {isAlreadyScaled && (
+                                                                    <div className="absolute inset-0 bg-emerald-500/80 flex items-center justify-center text-white">
+                                                                        <Check size={18} />
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
+                                                            {/* Name (First + Last, no email) */}
+                                                            <div className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate w-full px-1">
+                                                                {user.name || 'Sem nome'}
+                                                            </div>
+
+                                                            {/* Main Skill / Instrument */}
+                                                            <div className="text-[10px] font-semibold text-purple-600 dark:text-purple-400 truncate w-full mt-0.5">
+                                                                {isAlreadyScaled ? 'Escalado' : mainRole}
+                                                            </div>
+
+                                                            {!isAlreadyScaled && (
+                                                                <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-300 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                    <Plus size={12} />
+                                                                </div>
+                                                            )}
+                                                        </button>
+                                                    );
+                                                });
+                                            })()}
                                         </div>
                                     )}
                                 </div>
-
-                                {/* Active Members List */}
-                                {scaleMembers.length === 0 ? (
-                                    <div className="text-center text-slate-400 text-sm py-2">Ninguém escalado ainda.</div>
-                                ) : (
-                                    <div className="flex flex-wrap gap-2">
-                                        {scaleMembers.map(member => {
-                                            const status = member.status || 'PENDING';
-                                            const isConfirmed = status === 'CONFIRMED';
-                                            const isDeclined = status === 'DECLINED';
-                                            
-                                            let badgeStyle = 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200';
-                                            if (isConfirmed) {
-                                                badgeStyle = 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-400 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200';
-                                            } else if (isDeclined) {
-                                                badgeStyle = 'bg-rose-50 dark:bg-rose-950/40 border-rose-400 dark:border-rose-700 text-rose-800 dark:text-rose-200';
-                                            }
-
-                                            return (
-                                                <div key={member.id} className={`flex items-center gap-2 pl-1 pr-2 py-1.5 rounded-full border shadow-sm transition ${badgeStyle}`}>
-                                                    <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden relative">
-                                                        {member.user?.avatar_url ? (
-                                                            <img src={member.user.avatar_url} alt={member.user.name} className="w-full h-full object-cover" />
-                                                        ) : (
-                                                            <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-slate-500">
-                                                                {(member.user?.name || '?').charAt(0)}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <span className="text-xs font-bold truncate max-w-[80px]">
-                                                        {member.user?.name?.split(' ')[0] || member.user?.email}
-                                                    </span>
-                                                    
-                                                    {/* Status Badge Icon */}
-                                                    <span className="flex items-center gap-1 text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded-md bg-white/80 dark:bg-slate-800/80 shadow-xs" title={`Status: ${status}`}>
-                                                        {isConfirmed && <CheckCircle2 size={12} className="text-emerald-500" />}
-                                                        {isDeclined && <XCircle size={12} className="text-rose-500" />}
-                                                        {!isConfirmed && !isDeclined && <Clock size={12} className="text-amber-500" />}
-                                                        <span>{isConfirmed ? 'OK' : isDeclined ? 'Recusou' : 'Pendente'}</span>
-                                                    </span>
-
-                                                    <button
-                                                        onClick={() => editMemberRole(member)}
-                                                        className="bg-purple-100 dark:bg-purple-900/40 text-[9px] font-extrabold text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 px-1.5 py-0.5 cursor-pointer hover:bg-purple-200 dark:hover:bg-purple-900/60 rounded-md truncate max-w-[90px]"
-                                                        title="Alterar Função"
-                                                    >
-                                                        {member.role}
-                                                    </button>
-
-                                                    <button
-                                                        onClick={() => removeFromScale(member.id)}
-                                                        className="w-5 h-5 flex items-center justify-center rounded-full text-slate-400 hover:text-rose-600 hover:bg-white dark:hover:bg-slate-800"
-                                                        title="Remover da escala"
-                                                    >
-                                                        <X size={12} />
-                                                    </button>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
                             </div>
 
                             {/* Mode Specific Body */}

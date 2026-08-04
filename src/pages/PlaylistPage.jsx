@@ -464,7 +464,7 @@ export function PlaylistPage() {
                 if (finalId && scaleMembers && scaleMembers.length > 0) {
                     for (const member of scaleMembers) {
                         // Default role 'Vocal' if missing
-                        await addUserToSetlistScale(finalId, member.userId, member.role || 'Vocal');
+                        await addUserToSetlistScale(finalId, member.userId, member.role || 'Vocal', { sendWhatsApp: setlistData.sendWhatsApp !== false });
                     }
                 }
             }

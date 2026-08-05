@@ -784,7 +784,7 @@ export function SetlistManager({ playlistId, songs = [], availableSongs = [], on
                                         {playlistMembers.length === 0 ? (
                                             <div className="text-center py-6 text-xs text-slate-400">Nenhum membro cadastrado nesta igreja/playlist.</div>
                                         ) : (
-                                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 max-h-56 overflow-y-auto pr-1 overscroll-contain">
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                                                 {(() => {
                                                     const existingIds = new Set(scaleMembers.map(m => m.user.id));
                                                     const q = userQuery.trim().toLowerCase();

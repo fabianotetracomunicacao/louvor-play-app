@@ -434,7 +434,8 @@ export function SetlistManager({ playlistId, songs = [], availableSongs = [], on
         });
 
         setSelectedSongs(newSelection);
-        setMode('preview');
+        setMode('manual');
+        setCurrentStep(3);
     };
 
     const handleFinalSave = () => {

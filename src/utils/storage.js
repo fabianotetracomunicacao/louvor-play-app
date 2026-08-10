@@ -282,7 +282,7 @@ export async function getSongs(options = {}) {
 
         let queryBuilder = supabase
             .from('songs')
-            .select('*, creator:created_by(email, name, full_name)', { count: 'exact' })
+            .select('*, creator:profiles!created_by(email, name, full_name)', { count: 'exact' })
             .is('deleted_at', null);
 
         if (style) queryBuilder = queryBuilder.eq('style', style);
@@ -338,7 +338,7 @@ export async function getSongsByIds(ids) {
         try {
             const { data, error } = await supabase
                 .from('songs')
-                .select('*, creator:created_by(email, name, full_name)')
+                .select('*, creator:profiles!created_by(email, name, full_name)')
                 .in('id', uncachedIds);
 
             if (!error && data) {
@@ -376,7 +376,7 @@ export async function getSongById(id) {
 
     const { data, error } = await supabase
         .from('songs')
-        .select('*, creator:created_by(email, name, full_name)')
+        .select('*, creator:profiles!created_by(email, name, full_name)')
         .eq('id', id)
         .single();
 
@@ -398,7 +398,7 @@ export async function getSongBySlug(slug) {
     if (!slug) return null;
     const { data, error } = await supabase
         .from('songs')
-        .select('*, creator:created_by(email, name, full_name)')
+        .select('*, creator:profiles!created_by(email, name, full_name)')
         .eq('cifraclub_slug', slug)
         .is('deleted_at', null)
         .maybeSingle();
@@ -432,7 +432,7 @@ export async function autoSaveExternalSong(songData) {
         if (songData.title && songData.artist) {
             const { data: existingByTitleArtist } = await supabase
                 .from('songs')
-                .select('*, creator:created_by(email, name, full_name)')
+                .select('*, creator:profiles!created_by(email, name, full_name)')
                 .ilike('title', songData.title.trim())
                 .ilike('artist', songData.artist.trim())
                 .is('deleted_at', null)
@@ -481,7 +481,7 @@ export async function autoSaveExternalSong(songData) {
         const { data, error } = await supabase
             .from('songs')
             .insert([dbPayload])
-            .select('*, creator:created_by(email, name, full_name)')
+            .select('*, creator:profiles!created_by(email, name, full_name)')
             .single();
 
         if (error) {
@@ -868,7 +868,7 @@ export async function toggleSongOfficial(songId) {
 export async function getDeletedSongs() {
     const { data, error } = await supabase
         .from('songs')
-        .select('*, creator:created_by(email, name, full_name)')
+        .select('*, creator:profiles!created_by(email, name, full_name)')
         .not('deleted_at', 'is', null)
         .order('deleted_at', { ascending: false });
 
@@ -2328,7 +2328,7 @@ export async function logActivity(eventType, targetId = null, metadata = {}) {
 export async function getMostViewedSongs(limit = 10) {
     const { data, error } = await supabase
         .from('songs')
-        .select('*, creator:created_by(email, name)')
+        .select('*, creator:profiles!created_by(email, name)')
         .is('deleted_at', null) // Filter Soft Delete
         .order('views', { ascending: false })
         .limit(limit);
@@ -2358,7 +2358,7 @@ export async function getUserHistory(limit = 10) {
 viewed_at,
     song: songs(
                 *,
-        creator: created_by(email, name)
+        creator:profiles!created_by(email, name)
     )
         `)
         .eq('user_id', user.id)
@@ -2666,7 +2666,7 @@ export async function getLikedSongs() {
         .select(`
 song: songs(
                 *,
-    creator: created_by(email, name)
+    creator:profiles!created_by(email, name)
 )
         `)
         .eq('user_id', user.id)
@@ -2691,7 +2691,7 @@ export async function getUserEdits() {
 
     const { data, error } = await supabase
         .from('songs')
-        .select('*, creator:created_by(email, name, full_name)')
+        .select('*, creator:profiles!created_by(email, name, full_name)')
         .eq('created_by', user.id)
         .is('deleted_at', null) // Filter Soft Delete
         .order('updated_at', { ascending: false });
@@ -2713,7 +2713,7 @@ export async function searchSongs(query) {
 
     const { data, error } = await supabase
         .from('songs')
-        .select('*, creator:created_by(email, name, full_name)')
+        .select('*, creator:profiles!created_by(email, name, full_name)')
         .or(`title.ilike.%${query}%,artist.ilike.%${query}%`)
         .is('deleted_at', null) // Filter Soft Delete
         .order('title');
@@ -2735,7 +2735,7 @@ export async function getSongsByStyle(style) {
 
     const { data, error } = await supabase
         .from('songs')
-        .select('*, creator:created_by(email, name)')
+        .select('*, creator:profiles!created_by(email, name)')
         .eq('style', style)
         .is('deleted_at', null) // Filter Soft Delete
         .order('title');
@@ -2757,7 +2757,7 @@ export async function getSongsByFunction(funcName) {
 
     const { data, error } = await supabase
         .from('songs')
-        .select('*, creator:created_by(email, name)')
+        .select('*, creator:profiles!created_by(email, name)')
         .contains('functions', [funcName])
         .is('deleted_at', null)
         .order('title');

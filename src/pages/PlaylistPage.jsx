@@ -116,7 +116,7 @@ export function PlaylistPage() {
                 const { data, error } = await supabase
                     .from('songs')
                     .select('*, creator:profiles(email, name)')
-                    .or(`title.ilike.%${songSearchQuery}%,artist.ilike.%${songSearchQuery}%,version_label.ilike.%${songSearchQuery}%`)
+                    .or(`title.ilike.%${songSearchQuery}%,artist.ilike.%${songSearchQuery}%`)
                     .is('deleted_at', null)
                     .limit(50);
 

@@ -145,40 +145,29 @@ export function analyzeTabLines(lines) {
 }
 
 /**
- * Groups raw segments ({ chord, text }) into word blocks.
- * Each word block is an atomic inline-flex container that prevents flex-wrap from breaking words in half.
+ * Groups contiguous segments into word wrappers without modifying segment text.
+ * If seg[i].text does NOT end with whitespace, seg[i] and seg[i+1] belong to the same word wrapper.
+ * This prevents flexbox from breaking mid-word when a chord is placed inside a word,
+ * while preserving 100% exact text character widths and chord alignments.
  */
-export function groupSegmentsIntoWords(segments) {
-    const wordBlocks = [];
-    let currentWordSegments = [];
+export function groupContiguousSegments(segments) {
+    if (!segments || segments.length === 0) return [];
+
+    const wordGroups = [];
+    let currentGroup = [];
 
     segments.forEach((seg) => {
-        const { chord, text } = seg;
-
-        if (!text) {
-            currentWordSegments.push({ chord, text: '' });
-            return;
+        currentGroup.push(seg);
+        const text = seg.text || '';
+        if (!text || /\s$/.test(text)) {
+            wordGroups.push(currentGroup);
+            currentGroup = [];
         }
-
-        const tokens = text.split(/(\s+)/);
-
-        tokens.forEach((token) => {
-            if (!token) return;
-
-            if (/^\s+$/.test(token)) {
-                currentWordSegments.push({ chord: null, text: token });
-                wordBlocks.push({ segments: currentWordSegments });
-                currentWordSegments = [];
-            } else {
-                const chordForSubToken = currentWordSegments.length === 0 ? chord : null;
-                currentWordSegments.push({ chord: chordForSubToken, text: token });
-            }
-        });
     });
 
-    if (currentWordSegments.length > 0) {
-        wordBlocks.push({ segments: currentWordSegments });
+    if (currentGroup.length > 0) {
+        wordGroups.push(currentGroup);
     }
 
-    return wordBlocks;
+    return wordGroups;
 }

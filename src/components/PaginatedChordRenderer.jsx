@@ -1,6 +1,6 @@
 import React, { useState, useLayoutEffect, useRef } from 'react';
 import { Info } from 'lucide-react';
-import { analyzeTabLines, groupSegmentsIntoWords } from '../utils/tabUtils';
+import { analyzeTabLines, groupContiguousSegments } from '../utils/tabUtils';
 
 // Helpers
 // 1mm = ~3.78px
@@ -539,7 +539,7 @@ function LineRenderer({ line, isBold, isTab, block, fontSize, tabFontSize, lineS
 
         // Stateful bold tracking
         let isBoldCurrent = isBold;
-        const wordBlocks = groupSegmentsIntoWords(segments);
+        const wordGroups = groupContiguousSegments(segments);
 
         content = (
             <div
@@ -567,9 +567,9 @@ function LineRenderer({ line, isBold, isTab, block, fontSize, tabFontSize, lineS
                         );
                     })
                 ) : (
-                    wordBlocks.map((wordBlock, wIdx) => (
-                        <div key={wIdx} className="inline-flex items-end whitespace-nowrap">
-                            {wordBlock.segments.map((seg, i) => {
+                    wordGroups.map((group, gIdx) => (
+                        <div key={gIdx} className="inline-flex items-end whitespace-nowrap">
+                            {group.map((seg, i) => {
                                 const { chord, text } = seg;
                                 return (
                                     <div 

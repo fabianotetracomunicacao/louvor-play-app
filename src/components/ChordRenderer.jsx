@@ -6,7 +6,7 @@ import { KeyboardChordDiagram } from './KeyboardChordDiagram';
 import { getKeyboardChord } from '../utils/keyboardChords';
 import { Portal } from './Portal';
 import { useData } from '../contexts/DataContext';
-import { analyzeTabLines, groupSegmentsIntoWords } from '../utils/tabUtils';
+import { analyzeTabLines, groupContiguousSegments } from '../utils/tabUtils';
 
 // Simple Parser/Renderer
 // Simple Parser/Renderer
@@ -402,7 +402,7 @@ function LineRenderer({ line, originalIndex, fontSize, lineSpacing, letterSpacin
     const hasChords = segments.some(s => s.chord);
     let isBoldCurrent = false;
 
-    const wordBlocks = groupSegmentsIntoWords(segments);
+    const wordGroups = groupContiguousSegments(segments);
 
     return (
         <div
@@ -432,9 +432,9 @@ function LineRenderer({ line, originalIndex, fontSize, lineSpacing, letterSpacin
                     );
                 })
             ) : (
-                wordBlocks.map((wordBlock, wIdx) => (
-                    <div key={wIdx} className="inline-flex items-end whitespace-nowrap">
-                        {wordBlock.segments.map((seg, i) => {
+                wordGroups.map((group, gIdx) => (
+                    <div key={gIdx} className="inline-flex items-end whitespace-nowrap">
+                        {group.map((seg, i) => {
                             const { chord, text } = seg;
                             return (
                                 <div 

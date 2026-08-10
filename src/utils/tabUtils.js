@@ -145,18 +145,57 @@ export function analyzeTabLines(lines) {
 }
 
 /**
- * Groups contiguous segments into word wrappers without modifying segment text.
- * If seg[i].text does NOT end with whitespace, seg[i] and seg[i+1] belong to the same word wrapper.
- * This prevents flexbox from breaking mid-word when a chord is placed inside a word,
- * while preserving 100% exact text character widths and chord alignments.
+ * Parses a ChordPro formatted line into word groups suitable for responsive flexbox rendering.
+ * Each word group is an atomic inline flex unit containing word tokens and their chords.
+ * Preserves exact chord positioning, enables clean word-level line wrapping, and prevents overflow.
  */
-export function groupContiguousSegments(segments) {
-    if (!segments || segments.length === 0) return [];
+export function parseLineIntoWordGroups(line) {
+    if (!line) return { isChordOnlyLine: true, rawSegments: [], wordGroups: [] };
 
+    const parts = line.split(/(\[.*?\])/);
+    const plainText = parts.filter((part) => !part.startsWith('[')).join('');
+    const isChordOnlyLine = !plainText.trim();
+
+    // 1. Build raw segments (Chord + following Text)
+    const rawSegments = [];
+    let currentChord = null;
+    parts.forEach(part => {
+        if (part.startsWith('[') && part.endsWith(']')) {
+            if (currentChord) rawSegments.push({ chord: currentChord, text: '' });
+            currentChord = part.slice(1, -1);
+        } else {
+            rawSegments.push({ chord: currentChord, text: part || '' });
+            currentChord = null;
+        }
+    });
+    if (currentChord) rawSegments.push({ chord: currentChord, text: '' });
+
+    if (isChordOnlyLine) {
+        return { isChordOnlyLine: true, rawSegments, wordGroups: [] };
+    }
+
+    // 2. Break raw segments into word-level sub-segments while preserving chords on first sub-segment
+    const wordSubSegments = [];
+    rawSegments.forEach((seg) => {
+        const { chord, text } = seg;
+        if (!text) {
+            wordSubSegments.push({ chord, text: '' });
+            return;
+        }
+
+        const tokens = text.match(/\S+\s*|\s+/g) || [text];
+
+        tokens.forEach((token, idx) => {
+            const chordForToken = idx === 0 ? chord : null;
+            wordSubSegments.push({ chord: chordForToken, text: token });
+        });
+    });
+
+    // 3. Group sub-segments that belong to the same word (i.e. if previous sub-segment has no trailing space)
     const wordGroups = [];
     let currentGroup = [];
 
-    segments.forEach((seg) => {
+    wordSubSegments.forEach((seg) => {
         currentGroup.push(seg);
         const text = seg.text || '';
         if (!text || /\s$/.test(text)) {
@@ -169,5 +208,5 @@ export function groupContiguousSegments(segments) {
         wordGroups.push(currentGroup);
     }
 
-    return wordGroups;
+    return { isChordOnlyLine: false, rawSegments, wordGroups };
 }

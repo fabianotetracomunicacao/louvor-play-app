@@ -6,7 +6,7 @@ import { KeyboardChordDiagram } from './KeyboardChordDiagram';
 import { getKeyboardChord } from '../utils/keyboardChords';
 import { Portal } from './Portal';
 import { useData } from '../contexts/DataContext';
-import { analyzeTabLines, groupContiguousSegments } from '../utils/tabUtils';
+import { analyzeTabLines, parseLineIntoWordGroups } from '../utils/tabUtils';
 
 // Simple Parser/Renderer
 // Simple Parser/Renderer
@@ -373,36 +373,13 @@ function LineRenderer({ line, originalIndex, fontSize, lineSpacing, letterSpacin
         );
     }
 
-    const cleanLine = line;
-
-    // Split chords first
-    const parts = cleanLine.split(/(\[.*?\])/);
-
-    // Check if the line is "Chord Only" (no meaningful text content)
-    const plainText = parts.filter((part, i) => !part.startsWith('[')).join('');
-    const isChordOnlyLine = !plainText.trim();
-
-    // 2. Group into musical segments (Chord + following Text)
-    const segments = [];
-    let currentChord = null;
-    parts.forEach(part => {
-        if (part.startsWith('[') && part.endsWith(']')) {
-            if (currentChord) segments.push({ chord: currentChord, text: '' });
-            currentChord = part.slice(1, -1);
-        } else {
-            segments.push({ chord: currentChord, text: part || '' });
-            currentChord = null;
-        }
-    });
-    if (currentChord) segments.push({ chord: currentChord, text: '' });
+    const { isChordOnlyLine, rawSegments, wordGroups } = parseLineIntoWordGroups(line);
 
     // Base spacing values (internal layout)
     const chordHeight = '1.4em';
     const lyricHeight = '1.2em';
-    const hasChords = segments.some(s => s.chord);
+    const hasChords = rawSegments.some(s => s.chord);
     let isBoldCurrent = false;
-
-    const wordGroups = groupContiguousSegments(segments);
 
     return (
         <div
@@ -416,7 +393,7 @@ function LineRenderer({ line, originalIndex, fontSize, lineSpacing, letterSpacin
             }}
         >
             {isChordOnlyLine ? (
-                segments.map((seg, i) => {
+                rawSegments.map((seg, i) => {
                     const { chord, text } = seg;
                     return chord ? (
                         <span

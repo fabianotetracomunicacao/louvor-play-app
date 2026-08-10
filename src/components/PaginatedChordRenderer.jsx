@@ -1,6 +1,6 @@
 import React, { useState, useLayoutEffect, useRef } from 'react';
 import { Info } from 'lucide-react';
-import { analyzeTabLines, groupContiguousSegments } from '../utils/tabUtils';
+import { analyzeTabLines, parseLineIntoWordGroups } from '../utils/tabUtils';
 
 // Helpers
 // 1mm = ~3.78px
@@ -516,30 +516,14 @@ function LineRenderer({ line, isBold, isTab, block, fontSize, tabFontSize, lineS
     }
     // 4. Normal Chord + Text Line (Grid Segment Model)
     else {
-        const parts = line.split(/(\[.*?\])/);
-        const plainText = parts.filter((part, i) => !part.startsWith('[')).join('');
-        const isChordOnlyLine = !plainText.trim();
-        const hasChords = parts.some(p => p.startsWith('[') && p.endsWith(']'));
-
-        const segments = [];
-        let currentChord = null;
-        parts.forEach(part => {
-            if (part.startsWith('[') && part.endsWith(']')) {
-                if (currentChord) segments.push({ chord: currentChord, text: '' });
-                currentChord = part.slice(1, -1);
-            } else {
-                segments.push({ chord: currentChord, text: part || '' });
-                currentChord = null;
-            }
-        });
-        if (currentChord) segments.push({ chord: currentChord, text: '' });
+        const { isChordOnlyLine, rawSegments, wordGroups } = parseLineIntoWordGroups(line);
 
         const chordHeight = '1.4em';
         const lyricHeight = '1.2em';
+        const hasChords = rawSegments.some(p => p.chord);
 
         // Stateful bold tracking
         let isBoldCurrent = isBold;
-        const wordGroups = groupContiguousSegments(segments);
 
         content = (
             <div
@@ -552,7 +536,7 @@ function LineRenderer({ line, isBold, isTab, block, fontSize, tabFontSize, lineS
                 }}
             >
                 {isChordOnlyLine ? (
-                    segments.map((seg, i) => {
+                    rawSegments.map((seg, i) => {
                         const { chord, text } = seg;
                         return chord ? (
                             <span

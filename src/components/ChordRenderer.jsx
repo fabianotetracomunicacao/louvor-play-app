@@ -6,6 +6,7 @@ import { KeyboardChordDiagram } from './KeyboardChordDiagram';
 import { getKeyboardChord } from '../utils/keyboardChords';
 import { Portal } from './Portal';
 import { useData } from '../contexts/DataContext';
+import { analyzeTabLines, groupSegmentsIntoWords } from '../utils/tabUtils';
 
 // Simple Parser/Renderer
 // Simple Parser/Renderer
@@ -61,43 +62,34 @@ export function ChordProRenderer({ content, fontSize = 12, tabFontSize = null, l
     // Split by newline to preserve all lines, including empty ones
     const lines = content.split('\n');
 
+    // Analyze lines for tab blocks, headers, part labels and tab chords
+    const isTabFlags = analyzeTabLines(lines);
+
     // PRE-PROCESSING: Group lines into Blocks
     // Types: 'line' | 'tab' | 'tagged_block'
     const blocks = [];
     let currentBlock = null;
-    let isTabBlock = false;
 
     lines.forEach((line, originalIndex) => {
         const trimmed = line.trim();
 
-        // 1. Tab Detection (Start)
-        if (trimmed === '{sot}' || trimmed === '{start_of_tab}') {
-            isTabBlock = true;
-            return;
-        }
-        // 2. Tab Detection (End)
-        if (trimmed === '{eot}' || trimmed === '{end_of_tab}') {
-            isTabBlock = false;
-            return;
-        }
-
-        // 3. Tag Block Detection (Start) -> {tag: Label}
+        // 1. Tag Block Detection (Start) -> {tag: Label}
         const tagStartMatch = trimmed.match(/^\{tag:\s*(.*?)\}$/i);
         if (tagStartMatch) {
-            // Close previous block if any (though tags shouldn't nest in this simple parser)
             if (currentBlock) {
                 blocks.push(currentBlock);
             }
-            // Start new Tagged Block
+            const isTabTagged = isTabFlags[originalIndex] || /TAB/i.test(tagStartMatch[1]);
             currentBlock = {
                 type: 'tagged_block',
                 label: tagStartMatch[1],
+                isTab: isTabTagged,
                 lines: []
             };
             return;
         }
 
-        // 4. Tag Block Detection (End) -> {endtag}
+        // 2. Tag Block Detection (End) -> {endtag}
         if (trimmed === '{endtag}') {
             if (currentBlock && currentBlock.type === 'tagged_block') {
                 blocks.push(currentBlock);
@@ -106,30 +98,16 @@ export function ChordProRenderer({ content, fontSize = 12, tabFontSize = null, l
             return;
         }
 
-        // 5. Implicit Tab Check
-        const isImplicitTab = /^[A-Ga-g]\|/.test(trimmed) && (trimmed.match(/-/g) || []).length > 2;
+        const lineIsTab = isTabFlags[originalIndex];
 
-        // 6. Content Handling
-        if (isTabBlock || isImplicitTab) {
-            // If we are inside a Tagged Block, text/tabs go INSIDE it
-            if (currentBlock && currentBlock.type === 'tagged_block') {
-                currentBlock.lines.push({ type: 'tab', content: line });
-            } else {
-                // Standalone Tab Line (wrapped in simple block or just a line type)
-                // To keep order, we push as a 'tab' item to the top level blocks list
-                blocks.push({ type: 'tab', content: line });
-            }
+        // 3. Content Handling
+        if (currentBlock && currentBlock.type === 'tagged_block') {
+            currentBlock.lines.push({ type: lineIsTab ? 'tab' : 'line', content: line, originalIndex });
         } else {
-            // Standard Line
-            if (currentBlock && currentBlock.type === 'tagged_block') {
-                currentBlock.lines.push({ type: 'line', content: line, originalIndex });
-            } else {
-                blocks.push({ type: 'line', content: line, originalIndex });
-            }
+            blocks.push({ type: lineIsTab ? 'tab' : 'line', content: line, originalIndex });
         }
     });
 
-    // Push trailing open block if exists (auto-close)
     if (currentBlock) {
         blocks.push(currentBlock);
     }
@@ -424,6 +402,8 @@ function LineRenderer({ line, originalIndex, fontSize, lineSpacing, letterSpacin
     const hasChords = segments.some(s => s.chord);
     let isBoldCurrent = false;
 
+    const wordBlocks = groupSegmentsIntoWords(segments);
+
     return (
         <div
             className="flex flex-wrap items-end relative w-full"
@@ -435,10 +415,9 @@ function LineRenderer({ line, originalIndex, fontSize, lineSpacing, letterSpacin
                 marginBottom: isChordOnlyLine ? `${((lineSpacing || 1) * 0.2).toFixed(2)}em` : `${((lineSpacing || 1) * 0.4).toFixed(2)}em`
             }}
         >
-            {segments.map((seg, i) => {
-                const { chord, text } = seg;
-
-                if (isChordOnlyLine) {
+            {isChordOnlyLine ? (
+                segments.map((seg, i) => {
+                    const { chord, text } = seg;
                     return chord ? (
                         <span
                             key={i}
@@ -451,63 +430,68 @@ function LineRenderer({ line, originalIndex, fontSize, lineSpacing, letterSpacin
                     ) : (
                         <span key={i} className="whitespace-pre leading-none">{text}</span>
                     );
-                }
-
-                // Normal Chord + Text segment using CSS Grid
-                return (
-                    <div 
-                        key={i} 
-                        className="inline-grid grid-rows-[auto_auto] items-end min-w-max group"
-                        style={{ gridTemplateRows: `${chordHeight} ${lyricHeight}` }}
-                    >
-                        {/* Row 1: Chord */}
-                        <div className="row-start-1 leading-none self-end pb-1 pr-1">
-                            {chord && (
-                                <span
-                                    className="text-[var(--chord-color-light)] dark:text-[var(--chord-color-dark)] font-bold whitespace-nowrap cursor-pointer hover:underline select-none transition-transform group-hover:scale-105 inline-block origin-left"
-                                    onClick={() => onChordClick && onChordClick(chord)}
-                                    style={{ fontSize: `${fontSize * 0.95}pt` }}
+                })
+            ) : (
+                wordBlocks.map((wordBlock, wIdx) => (
+                    <div key={wIdx} className="inline-flex items-end whitespace-nowrap">
+                        {wordBlock.segments.map((seg, i) => {
+                            const { chord, text } = seg;
+                            return (
+                                <div 
+                                    key={i} 
+                                    className="inline-grid grid-rows-[auto_auto] items-end min-w-max group"
+                                    style={{ gridTemplateRows: `${chordHeight} ${lyricHeight}` }}
                                 >
-                                    {chord}
-                                </span>
-                            )}
-                        </div>
+                                    {/* Row 1: Chord */}
+                                    <div className="row-start-1 leading-none self-end pb-1 pr-1">
+                                        {chord && (
+                                            <span
+                                                className="text-[var(--chord-color-light)] dark:text-[var(--chord-color-dark)] font-bold whitespace-nowrap cursor-pointer hover:underline select-none transition-transform group-hover:scale-105 inline-block origin-left"
+                                                onClick={() => onChordClick && onChordClick(chord)}
+                                                style={{ fontSize: `${fontSize * 0.95}pt` }}
+                                            >
+                                                {chord}
+                                            </span>
+                                        )}
+                                    </div>
 
-                        {/* Row 2: Text/Lyric */}
-                        <div className="row-start-2 leading-none self-end whitespace-pre min-h-[1em]">
-                            {text ? (
-                                text.split('*').map((frag, j, arr) => {
-                                    const isFragmentBold = isBoldCurrent;
-                                    if (j < arr.length - 1) isBoldCurrent = !isBoldCurrent;
+                                    {/* Row 2: Text/Lyric */}
+                                    <div className="row-start-2 leading-none self-end whitespace-pre min-h-[1em]">
+                                        {text ? (
+                                            text.split('*').map((frag, j, arr) => {
+                                                const isFragmentBold = isBoldCurrent;
+                                                if (j < arr.length - 1) isBoldCurrent = !isBoldCurrent;
 
-                                    const subFragments = frag.split(/(\{(?:c|comment):.*?\})/gi);
-                                    return subFragments.map((subFrag, k) => {
-                                        const tagMatch = subFrag.match(/^\{(?:c|comment):\s*(.*?)\}$/i);
-                                        if (tagMatch) {
-                                            return (
-                                                <span
-                                                    key={`${j}-${k}`}
-                                                    className="inline-block bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-100 text-[0.6em] italic px-1.5 py-0.5 rounded mx-1 align-middle font-normal"
-                                                    style={{ lineHeight: '1.2' }}
-                                                >
-                                                    {tagMatch[1]}
-                                                </span>
-                                            );
-                                        }
-                                        if (!subFrag) return null;
-                                        return isFragmentBold
-                                            ? <strong key={`${j}-${k}`} className="font-bold">{subFrag}</strong>
-                                            : <span key={`${j}-${k}`}>{subFrag}</span>;
-                                    });
-                                })
-                            ) : (
-                                // Ensure the grid has a minimal width of a space if text is empty
-                                <span className="opacity-0 select-none">&nbsp;</span>
-                            )}
-                        </div>
+                                                const subFragments = frag.split(/(\{(?:c|comment):.*?\})/gi);
+                                                return subFragments.map((subFrag, k) => {
+                                                    const tagMatch = subFrag.match(/^\{(?:c|comment):\s*(.*?)\}$/i);
+                                                    if (tagMatch) {
+                                                        return (
+                                                            <span
+                                                                key={`${j}-${k}`}
+                                                                className="inline-block bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-100 text-[0.6em] italic px-1.5 py-0.5 rounded mx-1 align-middle font-normal"
+                                                                style={{ lineHeight: '1.2' }}
+                                                            >
+                                                                {tagMatch[1]}
+                                                            </span>
+                                                        );
+                                                    }
+                                                    if (!subFrag) return null;
+                                                    return isFragmentBold
+                                                        ? <strong key={`${j}-${k}`} className="font-bold">{subFrag}</strong>
+                                                        : <span key={`${j}-${k}`}>{subFrag}</span>;
+                                                });
+                                            })
+                                        ) : (
+                                            <span className="opacity-0 select-none">&nbsp;</span>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
-                );
-            })}
+                ))
+            )}
         </div>
     );
 }

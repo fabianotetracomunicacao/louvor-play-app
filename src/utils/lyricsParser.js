@@ -1,3 +1,5 @@
+import { analyzeTabLines } from './tabUtils';
+
 /**
  * Utility to extract clean lyrics from ChordPro/Text content.
  * It strips chords, formatting markers, and tab blocks, returning an array of clean lyric lines.
@@ -6,34 +8,18 @@ export function extractLyrics(content) {
     if (!content) return [];
 
     const lines = content.split('\n');
+    const isTabFlags = analyzeTabLines(lines);
     const cleanLines = [];
 
-    let isTabBlock = false;
-
     lines.forEach((line, originalIndex) => {
+        if (isTabFlags[originalIndex]) return;
+
         const trimmed = line.trim();
 
-        // 1. Skip Tab Blocks
-        if (trimmed === '{sot}' || trimmed === '{start_of_tab}') {
-            isTabBlock = true;
-            return;
-        }
-        if (trimmed === '{eot}' || trimmed === '{end_of_tab}') {
-            isTabBlock = false;
-            return;
-        }
-        if (isTabBlock) return;
-
-        // 2. Skip Implicit Tabs (e.g. e|---)
-        const isImplicitTab = /^[A-Ga-g]\|/.test(trimmed) && (trimmed.match(/-/g) || []).length > 2;
-        if (isImplicitTab) return;
-
-        // 3. Keep Headers/Tags like [Verso 1] or {tag: Verso} but make them clean
-        // The display logic might want to use section headers.
-        // Wait, standard ChordPro tags like {tag: ...} or {endtag} are wrappers.
+        // Keep Headers/Tags like [Verso 1] or {tag: Verso} but make them clean
         if (trimmed.match(/^\{tag:\s*(.*?)\}$/i)) {
             const label = trimmed.match(/^\{tag:\s*(.*?)\}$/i)[1];
-            cleanLines.push(`[${label}]`); // Convert `{tag: X}` to `[X]` for consistency
+            cleanLines.push({ text: `[${label}]`, originalIndex });
             return;
         }
         if (trimmed === '{endtag}') return;
@@ -139,36 +125,29 @@ export function extractSlides(songOrContent) {
         return (chordCount / tokens.length) >= 0.6;
     };
 
-    let textWithoutChords = '';
-
-    // Remove chords (anything in brackets like [G], [Am7], etc.)
-    // We want to KEEP section headers like [Verse 1] or [Refrão], which usually take the entire line
     const linesRaw = contentToParse.split('\n');
-    const processedLines = linesRaw.map(line => {
+    const isTabFlags = analyzeTabLines(linesRaw);
+    const processedLines = linesRaw.map((line, idx) => {
+        if (isTabFlags[idx]) return '';
         const trimmed = line.trim();
-        // If the whole line is a bracketed tag like [Refrão] and it's longer than a typical chord
         if (trimmed.startsWith('[') && trimmed.endsWith(']') && trimmed.length > 5) {
-            return trimmed; // Keep it as a section header
+            return trimmed;
         }
-        // Otherwise, strip out all bracketed chords [G] [Am7] from the line
         let clean = line.replace(/\[.*?\]/g, '');
-        // If the resulting line is a plain-text chord line, return empty so it gets filtered out
         if (isChordLine(clean)) {
             return '';
         }
         return clean;
     });
 
-    textWithoutChords = processedLines.join('\n');
+    const textWithoutChords = processedLines.join('\n');
     const lines = textWithoutChords.split('\n');
     const slides = [];
 
     let currentSlideLines = [];
-    let currentSlideType = 'Slide';
+    let currentSlideType = 'Geral';
     let emptyLineCount = 0;
-    let isTabBlock = false;
 
-    // Helper to push current slide and reset
     const pushCurrentSlide = (forceType = null) => {
         if (currentSlideLines.length > 0) {
             slides.push({
@@ -183,21 +162,6 @@ export function extractSlides(songOrContent) {
 
     lines.forEach((line) => {
         let trimmed = line.trim();
-
-        // 1. Skip Tab Blocks
-        if (trimmed === '{sot}' || trimmed === '{start_of_tab}') {
-            isTabBlock = true;
-            return;
-        }
-        if (trimmed === '{eot}' || trimmed === '{end_of_tab}') {
-            isTabBlock = false;
-            return;
-        }
-        if (isTabBlock) return;
-
-        // 2. Skip Implicit Tabs (e.g. e|---)
-        const isImplicitTab = /^[A-Ga-g]\|/.test(trimmed) && (trimmed.match(/-/g) || []).length > 2;
-        if (isImplicitTab) return;
 
         // 3. Handle Tags / Section Headers
         let isSectionHeader = false;

@@ -51,10 +51,10 @@ export function PaginatedChordRenderer({ content, fontSize, tabFontSize, lineSpa
             allLines.push(lineObj);
         });
 
-        // PASS 2: If tabs are suppressed, remove blank lines sandwiched between tab lines.
-        // We work on allLines (which still contains tab lines) so we can correctly look up neighbors.
+        // PASS 2: If tabs are suppressed (no_tabs), remove blank lines sandwiched between tab lines.
+        // In 'only_tabs' mode, keep blank lines so tab sections/parts remain spaced out nicely.
         let filteredLines = allLines;
-        if (displayMode === 'no_tabs' || displayMode === 'only_tabs') {
+        if (displayMode === 'no_tabs') {
             filteredLines = allLines.filter((lineObj, i) => {
                 // Non-blank lines are always kept at this stage
                 if (lineObj.text.trim() !== '') return true;

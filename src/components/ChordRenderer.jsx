@@ -112,21 +112,17 @@ export function ChordProRenderer({ content, fontSize = 12, tabFontSize = null, l
         blocks.push(currentBlock);
     }
 
-    // POST-PROCESSING: When tabs are hidden, suppress blank lines that are adjacent
-    // to tab blocks (i.e. blank lines that appear between tablature sections or
-    // immediately before/after them with no real content in between).
+    // POST-PROCESSING: When tabs are hidden (no_tabs), suppress blank lines that are adjacent
+    // to tab blocks so we don't leave large empty gaps.
+    // In 'only_tabs' mode, keep blank lines so tab sections/parts remain spaced out nicely.
     let filteredBlocks = blocks;
-    if (displayMode === 'no_tabs' || displayMode === 'only_tabs') {
-        // Build a set of indices that are tab-type blocks (will be hidden)
-        const isHiddenIndex = blocks.map(b => b.type === 'tab');
-
+    if (displayMode === 'no_tabs') {
         filteredBlocks = blocks.filter((block, i) => {
             // Keep non-blank lines always
             if (block.type !== 'line' || block.content?.trim() !== '') return true;
 
             // This is a blank line. Suppress it if both the nearest non-blank
-            // blocks on each side are tab blocks (i.e. there's no real content
-            // between two tab sections).
+            // blocks on each side are tab blocks
             const prevNonBlank = (() => {
                 for (let j = i - 1; j >= 0; j--) {
                     if (blocks[j].type !== 'line' || blocks[j].content?.trim() !== '') return blocks[j];

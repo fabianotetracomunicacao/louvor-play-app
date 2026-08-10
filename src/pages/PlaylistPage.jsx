@@ -36,7 +36,8 @@ import {
     duplicateSetlist,
     downloadSetlistForOffline,
     downloadPlaylistForOffline,
-    removePlaylistFromOffline
+    removePlaylistFromOffline,
+    mapSongFromDb
 } from '../utils/storage';
 import { SetlistManager } from '../components/SetlistManager';
 import { Portal } from '../components/Portal';

@@ -372,9 +372,9 @@ export function PlaylistPage() {
                 content: i.song?.content,
                 duration: i.song?.duration,
                 originalKey: i.song?.originalKey,
-                transposition: i.transposition || i.customTransposition || 0,
-                itemId: i.itemId || i.id, // Handle unified ID access if possible
-                key: i.transposition || 0 // Deprecated/alias
+                transposition: i.custom_transposition || i.transposition || i.customTransposition || 0,
+                itemId: i.id || i.itemId, // Handle unified ID access if possible, preferring id for setlists
+                key: i.custom_transposition || i.transposition || 0 // Deprecated/alias
             })).filter(i => i.id), // Filter out items with missing song data
             total: list.length
         };
@@ -1728,10 +1728,10 @@ export function PlaylistPage() {
                                                                     navigate(`/player/${firstItem.song?.id}?autoConnectLive=true`, {
                                                                         state: {
                                                                             song: firstItem.song,
-                                                                            playlistItemId: firstItem.itemId,
+                                                                            playlistItemId: firstItem.id,
                                                                             context: contextParam,
                                                                             currentIndex: 0,
-                                                                            initialTransposition: firstItem.transposition || 0
+                                                                            initialTransposition: firstItem.custom_transposition || firstItem.transposition || 0
                                                                         }
                                                                     });
                                                                 }}

@@ -1521,6 +1521,7 @@ export async function updatePlaylistItemTransposition(itemId, transposition) {
         console.error("Error updating transposition:", error);
         return false;
     }
+    if (typeof setlistItemTranspCache !== 'undefined') setlistItemTranspCache.set(itemId, transposition);
     return true;
 }
 
@@ -1533,6 +1534,7 @@ export async function updateSetlistItemTransposition(itemId, transposition) {
         console.error("Error updating setlist transposition:", error);
         return false;
     }
+    if (typeof setlistItemTranspCache !== 'undefined') setlistItemTranspCache.set(itemId, transposition);
     return true;
 }
 

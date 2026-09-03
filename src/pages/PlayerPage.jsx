@@ -948,6 +948,7 @@ export function PlayerPage() {
 
     const transposedContent = transposeSong(song.content, transposition);
     const absoluteKey = getTransposedNote(song.originalKey, transposition);
+    const churchKey = churchTransposition !== 0 ? getTransposedNote(song.originalKey, churchTransposition) : null;
 
     const handlePrint = () => {
         // Force Paginated Mode before printing
@@ -1202,6 +1203,7 @@ export function PlayerPage() {
                                 isPlaylist={!!playlistItemId}
                                 context={context}
                                 currentIndex={currentIndex}
+                                churchKey={churchKey}
                             />
 
                             <div className={`transition-opacity duration-500 ${isReady ? 'opacity-100' : 'opacity-0 min-h-[50vh]'}`}>
@@ -1267,6 +1269,7 @@ export function PlayerPage() {
                                 transposition={absoluteKey}
                                 originalKey={song.originalKey}
                                 isPlaylist={!!playlistItemId}
+                                churchKey={churchKey}
                                 columnCount={columnCount}
                                 displayMode={displayMode}
                                 isInternet={songId === 'internet' || song.source === 'cifraclub'}
@@ -1828,7 +1831,7 @@ export function PlayerPage() {
     );
 }
 
-function Header({ song, currentKey, isPlaylist, context, currentIndex }) {
+function Header({ song, currentKey, isPlaylist, context, currentIndex, churchKey }) {
     return (
         <div className="flex justify-between items-start mb-2 md:mb-6 border-b border-slate-900 dark:border-slate-700 pb-1 md:pb-2 break-inside-avoid">
             {/* Left Side: Title & Artist */}
@@ -1863,6 +1866,11 @@ function Header({ song, currentKey, isPlaylist, context, currentIndex }) {
                     <div className="text-[10px] text-slate-400 font-mono uppercase tracking-wider">
                         Original: <strong className="text-slate-600 dark:text-slate-400 normal-case">{song.originalKey}</strong>
                     </div>
+                    {isPlaylist && churchKey && churchKey !== song.originalKey && (
+                        <div className="text-[10px] text-blue-400 font-mono uppercase tracking-wider">
+                            {context?.type === 'setlist' ? 'Setlist' : 'Repertório'}: <strong className="text-blue-300 normal-case">{churchKey}</strong>
+                        </div>
+                    )}
                     <div className="text-xs md:text-sm font-mono text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 px-1.5 md:px-2 py-0.5 rounded bg-slate-50 dark:bg-slate-800 shadow-sm">
                         {isPlaylist ? "Meu: " : "Tom: "} <strong className="text-black dark:text-white">{currentKey}</strong>
                     </div>

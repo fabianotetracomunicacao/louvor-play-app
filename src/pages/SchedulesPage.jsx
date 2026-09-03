@@ -82,9 +82,11 @@ export function SchedulesPage() {
                     title: setlist.name,
                     items: setlist.items.map(si => ({
                         id: si.song?.id || si.song_id,
-                        playlistItemId: si.id,
+                        itemId: si.id, // Fixed: use itemId instead of playlistItemId so PlayerPage can read it
+                        playlistItemId: si.id, // Keep just in case something else relies on it
                         title: si.song?.title,
                         artist: si.song?.artist,
+                        transposition: si.custom_transposition || 0, // Fixed: use transposition instead of tone
                         tone: si.custom_transposition || 0,
                         song: si.song
                     }))

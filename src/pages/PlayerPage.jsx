@@ -1165,7 +1165,7 @@ export function PlayerPage() {
                             style={{ fontSize: `${fontSize}pt` }} // Fix space in pt unit
                         >
                             {/* Internet Warning Banner */}
-                            {(songId === 'internet' || song.source === 'cifraclub') && (
+                            {(songId === 'internet') && (
                                 <div className="w-full py-2 px-4 bg-red-500/10 dark:bg-red-500/20 backdrop-blur-sm border-b border-red-500/20 flex items-center justify-center gap-2 mb-4 animate-in slide-in-from-top duration-500">
                                     <Info size={14} className="text-red-500 flex-shrink-0" />
                                     <span className="text-[10px] md:text-xs font-bold text-red-600 dark:text-red-400 leading-tight">
@@ -1477,8 +1477,8 @@ export function PlayerPage() {
                                     <Music size={12} /> Transposição {playlistItemId && <span className="text-purple-400 text-[10px] ml-1">(Playlist Ativa)</span>}
                                 </label>
 
-                                {/* Key Presets - HIDE FOR INTERNET SONGS */}
-                                {!(songId === 'internet' || song.source === 'cifraclub') && (
+                                {/* Key Presets - HIDE FOR INTERNET SONGS ONLY */}
+                                {!(songId === 'internet') && (
                                     <div className="flex gap-1 mb-2 bg-slate-900/50 p-1 rounded-lg">
                                         <button
                                             onClick={() => { setActiveTab('original'); setTransposition(0); }}
@@ -1542,7 +1542,7 @@ export function PlayerPage() {
                                     </div>
 
                                     {/* Compact Manual Save Icon - HIDE FOR INTERNET SONGS */}
-                                    {!(songId === 'internet' || song.source === 'cifraclub') && (
+                                    {!(songId === 'internet') && (
                                         <button
                                             onClick={handleManualSave}
                                             disabled={isSaveDisabled()}
@@ -1831,7 +1831,7 @@ export function PlayerPage() {
     );
 }
 
-function Header({ song, currentKey, isPlaylist, context, currentIndex, churchKey }) {
+function Header({ song, currentKey, isPlaylist, context, currentIndex }) {
     return (
         <div className="flex justify-between items-start mb-2 md:mb-6 border-b border-slate-900 dark:border-slate-700 pb-1 md:pb-2 break-inside-avoid">
             {/* Left Side: Title & Artist */}
@@ -1866,11 +1866,6 @@ function Header({ song, currentKey, isPlaylist, context, currentIndex, churchKey
                     <div className="text-[10px] text-slate-400 font-mono uppercase tracking-wider">
                         Original: <strong className="text-slate-600 dark:text-slate-400 normal-case">{song.originalKey}</strong>
                     </div>
-                    {isPlaylist && churchKey && churchKey !== song.originalKey && (
-                        <div className="text-[10px] text-blue-400 font-mono uppercase tracking-wider">
-                            {context?.type === 'setlist' ? 'Setlist' : 'Repertório'}: <strong className="text-blue-300 normal-case">{churchKey}</strong>
-                        </div>
-                    )}
                     <div className="text-xs md:text-sm font-mono text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 px-1.5 md:px-2 py-0.5 rounded bg-slate-50 dark:bg-slate-800 shadow-sm">
                         {isPlaylist ? "Meu: " : "Tom: "} <strong className="text-black dark:text-white">{currentKey}</strong>
                     </div>

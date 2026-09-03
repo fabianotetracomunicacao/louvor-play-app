@@ -282,7 +282,7 @@ export async function getSongs(options = {}) {
 
         let queryBuilder = supabase
             .from('songs')
-            .select('*, creator:profiles(email, name)', { count: 'exact' })
+            .select('id, title, artist, original_key, font_size, tab_font_size, line_spacing, style, functions, tags, youtube_links, created_by, duration, cifraclub_slug, is_official, type, cifraclub_url, creator:profiles(email, name)', { count: 'exact' })
             .is('deleted_at', null);
 
         if (style) queryBuilder = queryBuilder.eq('style', style);

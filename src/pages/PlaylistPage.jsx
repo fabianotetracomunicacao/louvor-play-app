@@ -116,7 +116,7 @@ export function PlaylistPage() {
             try {
                 const { data, error } = await supabase
                     .from('songs')
-                    .select('*, creator:profiles(email, name)')
+                    .select('id, title, artist, original_key, font_size, tab_font_size, line_spacing, style, functions, tags, youtube_links, created_by, duration, cifraclub_slug, is_official, type, cifraclub_url, creator:profiles(email, name)')
                     .or(`title.ilike.%${songSearchQuery}%,artist.ilike.%${songSearchQuery}%`)
                     .is('deleted_at', null)
                     .limit(50);
@@ -511,7 +511,7 @@ export function PlaylistPage() {
     useEffect(() => {
         const init = async () => {
             // getSongs now returns {songs, total, hasMore}
-            const result = await getSongs({ limit: 1000 }); // Get many songs for playlist modal
+            const result = await getSongs({ limit: 50 }); // Load recent 50 songs
             setAllSongs(result.songs);
         };
         init();

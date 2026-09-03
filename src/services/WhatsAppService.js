@@ -198,6 +198,35 @@ export const WhatsAppService = {
 
         const dateFormatted = formatSetlistDateTime(setlistDate, setlistTime);
 
+        let repertoireText = '';
+        try {
+            const { data: scaleData } = await supabase
+                .from('setlist_scales')
+                .select('setlist_id')
+                .eq('id', scaleId)
+                .single();
+            
+            if (scaleData?.setlist_id) {
+                const { data: itemsData } = await supabase
+                    .from('setlist_items')
+                    .select('song:songs(title, artist)')
+                    .eq('setlist_id', scaleData.setlist_id)
+                    .order('position', { ascending: true });
+                
+                if (itemsData && itemsData.length > 0) {
+                    const songsList = itemsData
+                        .filter(item => item.song)
+                        .map((item, index) => `${index + 1}. ${item.song.title} (${item.song.artist})`);
+                    
+                    if (songsList.length > 0) {
+                        repertoireText = `\n🎶 *Repertório:*\n${songsList.join('\n')}\n`;
+                    }
+                }
+            }
+        } catch (err) {
+            console.warn('[WhatsAppService] Erro ao buscar repertório:', err);
+        }
+
         const message = [
             `🎵 *LouvorPlay - Confirmação de Escala*`,
             ``,
@@ -205,7 +234,7 @@ export const WhatsAppService = {
             `📌 *${setlistTitle || 'Culto'}*`,
             `📅 *${dateFormatted}*`,
             `🎸 *Sua função:* ${roleName || 'Músico(a)'}`,
-            ``,
+            repertoireText ? repertoireText : ``,
             `Toque em uma opção abaixo para responder.`
         ].join('\n');
 

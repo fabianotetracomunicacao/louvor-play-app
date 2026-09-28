@@ -9,6 +9,7 @@ import { NotificationBell } from './NotificationBell';
 import { OfflineIndicator } from './OfflineIndicator';
 import { useNotification } from '../contexts/NotificationContext';
 import { CIFRA_API_URL } from '../utils/cifraApi';
+import { filterBlockedExternalSongs, recordBlockedExternalSong } from '../utils/blockedSongs';
 
 export function MainLayout() {
     const {
@@ -125,7 +126,8 @@ export function MainLayout() {
                 slug: `${item.artist_slug}/${item.song_slug}`
             }));
 
-            setExternalResults(mappedResults);
+            const filteredResults = await filterBlockedExternalSongs(mappedResults);
+            setExternalResults(filteredResults);
         } catch (err) {
             console.warn("External search failed in MainLayout:", err);
             setExternalResults([]);
@@ -163,12 +165,30 @@ export function MainLayout() {
 
             const response = await fetch(`${CIFRA_API_URL}/artists/${item.artist_slug}/songs/${item.song_slug}`);
             if (!response.ok) {
-                if (response.status === 403) {
-                    throw new Error('O CifraClub bloqueou a busca direta (erro 403). Utilize a Fila de Importação.');
-                }
-                throw new Error('Falha ao obter detalhes');
+                await recordBlockedExternalSong({
+                    slug,
+                    artist_slug: item.artist_slug,
+                    song_slug: item.song_slug,
+                    name: item.name,
+                    artist: item.artist,
+                    reason: 'problemas_estruturais'
+                });
+                setExternalResults(prev => prev.filter(r => (r.slug || `${r.artist_slug}/${r.song_slug}`) !== slug));
+                throw new Error('Esta cifra contém problemas estruturais e será excluída.');
             }
             const data = await response.json();
+            if (data.error || data.blocked) {
+                await recordBlockedExternalSong({
+                    slug,
+                    artist_slug: item.artist_slug,
+                    song_slug: item.song_slug,
+                    name: item.name,
+                    artist: item.artist,
+                    reason: 'problemas_estruturais'
+                });
+                setExternalResults(prev => prev.filter(r => (r.slug || `${r.artist_slug}/${r.song_slug}`) !== slug));
+                throw new Error('Esta cifra contém problemas estruturais e será excluída.');
+            }
 
             const rawContent = (data.cifra || []).join('\n');
             const formattedContent = parseImporter(rawContent);
@@ -202,7 +222,10 @@ export function MainLayout() {
             closeSearch();
         } catch (err) {
             console.error("External action failed:", err);
-            setSearchError(err instanceof Error && err.message ? err.message : "Erro ao carregar música da internet.");
+            const msg = (err.message && err.message.includes('problemas estruturais'))
+                ? 'Esta cifra contém problemas estruturais e será excluída.'
+                : (err instanceof Error && err.message ? err.message : "Erro ao carregar música da internet.");
+            setSearchError(msg);
         } finally {
             setIsSearchingExternal(false);
         }

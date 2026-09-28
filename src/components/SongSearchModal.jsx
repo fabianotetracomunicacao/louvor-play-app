@@ -5,9 +5,10 @@ import {
 } from 'lucide-react';
 import { Portal } from './Portal';
 import { supabase } from '../supabaseClient';
-import { getSongBySlug } from '../utils/storage';
+import { getSongBySlug, autoSaveExternalSong } from '../utils/storage';
 import { parseImporter } from '../utils/importer';
 import { CIFRA_API_URL } from '../utils/cifraApi';
+import { filterBlockedExternalSongs, recordBlockedExternalSong } from '../utils/blockedSongs';
 
 export function SongSearchModal({ isOpen, onClose, onImport }) {
     const [query, setQuery] = useState('');
@@ -50,8 +51,13 @@ export function SongSearchModal({ isOpen, onClose, onImport }) {
                     const data = await response.json();
                     
                     const results = data.results || [];
-                    const resultsWithStatus = await Promise.all(results.map(async (res) => {
-                        const slug = `${res.artist_slug}/${res.song_slug}`;
+                    const mappedResults = results.map(res => ({
+                        ...res,
+                        slug: res.slug || `${res.artist_slug}/${res.song_slug}`
+                    }));
+                    const filteredResults = await filterBlockedExternalSongs(mappedResults);
+                    const resultsWithStatus = await Promise.all(filteredResults.map(async (res) => {
+                        const slug = res.slug;
                         const existing = await getSongBySlug(slug);
                         return { ...res, slug, existingId: existing?.id };
                     }));
@@ -90,17 +96,36 @@ export function SongSearchModal({ isOpen, onClose, onImport }) {
             console.warn("Slug check failed:", e);
         }
 
+        const itemSlug = item.slug || `${item.artist_slug}/${item.song_slug}`;
         setIsSearching(true); // Re-use loading state
         try {
             // Fetch dots/chords from API
             const response = await fetch(`${CIFRA_API_URL}/artists/${item.artist_slug}/songs/${item.song_slug}`);
             if (!response.ok) {
-                if (response.status === 403) {
-                    throw new Error('O CifraClub bloqueou a busca direta (erro 403). Adicione o artista à Fila de Importação para importar em background.');
-                }
-                throw new Error('Falha ao obter detalhes da música');
+                await recordBlockedExternalSong({
+                    slug: itemSlug,
+                    artist_slug: item.artist_slug,
+                    song_slug: item.song_slug,
+                    name: item.name,
+                    artist: item.artist,
+                    reason: 'problemas_estruturais'
+                });
+                setExternalResults(prev => prev.filter(r => (r.slug || `${r.artist_slug}/${r.song_slug}`) !== itemSlug));
+                throw new Error('Esta cifra contém problemas estruturais e será excluída.');
             }
             const data = await response.json();
+            if (data.error || data.blocked) {
+                await recordBlockedExternalSong({
+                    slug: itemSlug,
+                    artist_slug: item.artist_slug,
+                    song_slug: item.song_slug,
+                    name: item.name,
+                    artist: item.artist,
+                    reason: 'problemas_estruturais'
+                });
+                setExternalResults(prev => prev.filter(r => (r.slug || `${r.artist_slug}/${r.song_slug}`) !== itemSlug));
+                throw new Error('Esta cifra contém problemas estruturais e será excluída.');
+            }
 
             // Format content using parseImporter
             const rawContent = (data.cifra || []).join('\n');
@@ -114,7 +139,7 @@ export function SongSearchModal({ isOpen, onClose, onImport }) {
                 artist: data.artist,
                 content: formattedContent,
                 youtubeLinks: isValidUrl ? [youtube_url] : [],
-                cifraclub_slug: item.slug,
+                cifraclub_slug: itemSlug,
                 is_official: false,
                 source: 'cifraclub'
             };
@@ -127,7 +152,10 @@ export function SongSearchModal({ isOpen, onClose, onImport }) {
             onClose();
         } catch (err) {
             console.error("Import failed:", err);
-            setError(err instanceof Error && err.message ? err.message : "Erro ao importar música. Tente novamente.");
+            const msg = (err.message && err.message.includes('problemas estruturais'))
+                ? 'Esta cifra contém problemas estruturais e será excluída.'
+                : (err instanceof Error && err.message ? err.message : "Erro ao importar música. Tente novamente.");
+            setError(msg);
         } finally {
             setIsSearching(false);
         }

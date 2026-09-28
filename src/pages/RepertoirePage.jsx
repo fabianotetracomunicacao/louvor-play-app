@@ -8,6 +8,7 @@ import { useData } from '../contexts/DataContext';
 import { LiquidLoader } from '../components/LiquidLoader';
 import { parseImporter } from '../utils/importer';
 import { CIFRA_API_URL } from '../utils/cifraApi';
+import { filterBlockedExternalSongs, recordBlockedExternalSong } from '../utils/blockedSongs';
 
 export function RepertoirePage() {
     const { isEditor, user, isAdmin } = useAuth();
@@ -97,13 +98,15 @@ export function RepertoirePage() {
                 const data = await response.json();
                 const results = data.results || [];
                 
-                // Add slug and check for existing (optional optimization, keeping it simple for now)
+                // Add slug and check for existing
                 const resultsWithSlug = results.map(res => ({
                     ...res,
-                    slug: `${res.artist_slug}/${res.song_slug}`
+                    slug: res.slug || `${res.artist_slug}/${res.song_slug}`
                 }));
 
-                setExternalResults(resultsWithSlug);
+                // Filter out any songs registered with structural problems / blocked
+                const filteredResults = await filterBlockedExternalSongs(resultsWithSlug);
+                setExternalResults(filteredResults);
             } catch (err) {
                 console.warn("External search failed:", err);
                 setExternalError("Não foi possível conectar à busca externa.");
@@ -117,16 +120,36 @@ export function RepertoirePage() {
 
     const handleImportExternal = async (item) => {
         setIsSearchingExternal(true);
+        const itemSlug = item.slug || `${item.artist_slug}/${item.song_slug}`;
         try {
             const response = await fetch(`${CIFRA_API_URL}/artists/${item.artist_slug}/songs/${item.song_slug}`);
             if (!response.ok) {
-                if (response.status === 403) {
-                    throw new Error('O CifraClub bloqueou a busca direta (erro 403). Utilize a Fila de Importação por Artista.');
-                }
-                throw new Error('Falha ao obter detalhes da música');
+                await recordBlockedExternalSong({
+                    slug: itemSlug,
+                    artist_slug: item.artist_slug,
+                    song_slug: item.song_slug,
+                    name: item.name,
+                    artist: item.artist,
+                    reason: 'problemas_estruturais'
+                });
+                setExternalResults(prev => prev.filter(r => (r.slug || `${r.artist_slug}/${r.song_slug}`) !== itemSlug));
+                throw new Error('Esta cifra contém problemas estruturais e será excluída.');
             }
             
             const data = await response.json();
+            if (data.error || data.blocked) {
+                await recordBlockedExternalSong({
+                    slug: itemSlug,
+                    artist_slug: item.artist_slug,
+                    song_slug: item.song_slug,
+                    name: item.name,
+                    artist: item.artist,
+                    reason: 'problemas_estruturais'
+                });
+                setExternalResults(prev => prev.filter(r => (r.slug || `${r.artist_slug}/${r.song_slug}`) !== itemSlug));
+                throw new Error('Esta cifra contém problemas estruturais e será excluída.');
+            }
+
             const rawContent = (data.cifra || []).join('\n');
             const formattedContent = parseImporter ? parseImporter(rawContent) : rawContent;
             
@@ -135,7 +158,7 @@ export function RepertoirePage() {
                 artist: data.artist,
                 content: formattedContent,
                 youtubeLinks: (data.youtube_url && (data.youtube_url.includes('http') || data.youtube_url.includes('youtube.com') || data.youtube_url.includes('youtu.be'))) ? [data.youtube_url] : [],
-                cifraclub_slug: item.slug,
+                cifraclub_slug: itemSlug,
                 source: 'cifraclub'
             };
 
@@ -148,7 +171,10 @@ export function RepertoirePage() {
             }
         } catch (err) {
             console.error("Import failed:", err);
-            showToast(err instanceof Error && err.message ? err.message : "Erro ao importar música. Tente novamente.", "error");
+            const msg = (err.message && err.message.includes('problemas estruturais'))
+                ? 'Esta cifra contém problemas estruturais e será excluída.'
+                : (err instanceof Error && err.message ? err.message : "Erro ao importar música. Tente novamente.");
+            showToast(msg, "error");
         } finally {
             setIsSearchingExternal(false);
         }
@@ -622,7 +648,7 @@ export function RepertoirePage() {
                                 >
                                     <div className="flex items-center gap-4">
                                         <div className={`
-                                            w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold shadow-sm flex-shrink-0
+                                            hidden md:flex w-12 h-12 rounded-xl items-center justify-center text-lg font-bold shadow-sm flex-shrink-0
                                             ${activeTab === 'likes'
                                                 ? 'bg-gradient-to-br from-pink-500 to-rose-500 text-white'
                                                 : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
@@ -658,7 +684,7 @@ export function RepertoirePage() {
                                     <div className="flex items-center gap-2 relative">
                                         <div className="flex items-center gap-1 md:gap-2">
                                             {main.type !== 'lyrics' && (
-                                                <div className="w-8 h-8 md:w-9 md:h-9 flex items-center justify-center bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold text-xs md:text-sm rounded-xl border border-slate-100 dark:border-slate-700" title={`Tom Original: ${main.originalKey}`}>
+                                                <div className="hidden md:flex w-8 h-8 md:w-9 md:h-9 items-center justify-center bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold text-xs md:text-sm rounded-xl border border-slate-100 dark:border-slate-700" title={`Tom Original: ${main.originalKey}`}>
                                                     {main.originalKey}
                                                 </div>
                                             )}
@@ -740,7 +766,7 @@ export function RepertoirePage() {
 
                                             <button
                                                 onClick={(e) => handleLikeToggle(main.id, e)}
-                                                className={`w-9 h-9 flex items-center justify-center rounded-xl transition ${likedSongIds.has(main.id)
+                                                className={`hidden md:flex w-9 h-9 items-center justify-center rounded-xl transition ${likedSongIds.has(main.id)
                                                     ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-500'
                                                     : 'bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20'
                                                     }`}
@@ -762,7 +788,7 @@ export function RepertoirePage() {
                                                 <div className="fixed inset-0 z-10" onClick={(e) => { e.stopPropagation(); setActiveMenuId(null); }} />
                                                 <div className="absolute right-0 top-full mt-2 bg-white dark:bg-slate-900 shadow-xl rounded-xl p-2 flex flex-col gap-1 z-20 min-w-[160px] border border-slate-100 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-200 origin-top-right">
                                                     <button
-                                                        onClick={(e) => handleLikeToggle(main.id, e)}
+                                                        onClick={(e) => { handleLikeToggle(main.id, e); setActiveMenuId(null); }}
                                                         className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition ${likedSongIds.has(main.id)
                                                             ? 'text-rose-500 bg-rose-50 dark:bg-rose-900/20'
                                                             : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'

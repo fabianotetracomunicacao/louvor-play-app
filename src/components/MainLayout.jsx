@@ -164,20 +164,17 @@ export function MainLayout() {
             }
 
             const response = await fetch(`${CIFRA_API_URL}/artists/${item.artist_slug}/songs/${item.song_slug}`);
-            if (!response.ok) {
-                await recordBlockedExternalSong({
-                    slug,
-                    artist_slug: item.artist_slug,
-                    song_slug: item.song_slug,
-                    name: item.name,
-                    artist: item.artist,
-                    reason: 'problemas_estruturais'
-                });
-                setExternalResults(prev => prev.filter(r => (r.slug || `${r.artist_slug}/${r.song_slug}`) !== slug));
-                throw new Error('Esta cifra contém problemas estruturais e será excluída.');
+            const data = await response.ok ? await response.json() : (await response.json().catch(() => ({})));
+
+            // Check if it's a global proxy block (Akamai) vs an actual song issue
+            const isGlobalBlock = response.status === 403 || data?.upstream_status === 403 || data?.error?.includes('blocked the request');
+            const isStructuralProblem = !isGlobalBlock && (!response.ok || data.error || data.blocked);
+
+            if (isGlobalBlock) {
+                throw new Error('O servidor de buscas está temporariamente bloqueado pelo CifraClub. Tente novamente mais tarde.');
             }
-            const data = await response.json();
-            if (data.error || data.blocked) {
+
+            if (isStructuralProblem) {
                 await recordBlockedExternalSong({
                     slug,
                     artist_slug: item.artist_slug,

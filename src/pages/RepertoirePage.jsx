@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Filter, SortAsc, Plus, Trash2, Mic2, FileText, Music, Heart, Search, Eye, Printer, Edit2, BookOpen, PlusCircle, Play, GraduationCap, MoreVertical, X, Copy, BadgeCheck, MonitorUp, Loader2, Globe, CheckCircle2, ExternalLink } from 'lucide-react'; // Try to find a nice icon for Repertoire
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { getLikedSongs, getUserEdits, deleteSong, searchSongs, getSongs, getMusicalStyles, getSongFunctions, toggleLike, copySong, toggleSongOfficial, autoSaveExternalSong } from '../utils/storage';
+import { getLikedSongs, getUserEdits, deleteSong, searchSongs, getSongs, getMusicalStyles, getSongFunctions, toggleLike, copySong, toggleSongOfficial, autoSaveExternalSong, getSongBySlug } from '../utils/storage';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { useData } from '../contexts/DataContext';
@@ -122,6 +122,13 @@ export function RepertoirePage() {
         setIsSearchingExternal(true);
         const itemSlug = item.slug || `${item.artist_slug}/${item.song_slug}`;
         try {
+            // First check if it already exists in DB
+            const existing = await getSongBySlug(itemSlug);
+            if (existing) {
+                navigate(`/editor/${existing.id}`);
+                return;
+            }
+
             const response = await fetch(`${CIFRA_API_URL}/artists/${item.artist_slug}/songs/${item.song_slug}`);
             const data = await response.ok ? await response.json() : (await response.json().catch(() => ({})));
 

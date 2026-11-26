@@ -19,9 +19,10 @@ const context = {
 };
 
 function signedRequest(contents, options = {}) {
-    const { messageOverrides, tamper, compress, age = 0 } = options;
+    const { messageOverrides, eventOverrides, tamper, compress, age = 0 } = options;
     const body = Buffer.from(JSON.stringify({
         ...context,
+        ...eventOverrides,
         message: { ...context.message, contents, ...messageOverrides },
     }));
     const time = Math.floor(Date.now() / 1000) - age;
@@ -76,6 +77,7 @@ describe('webhook do Omni', () => {
             { type: 'TEXT', message: '2', message_id_reply: 'outgoing-message' },
         ], { compress: true }));
         expect(response.status).toBe(200);
+        expect(await response.json()).toEqual({ ignored: true, reason: 'pending_scale_not_found' });
         expect(rpcArguments).toMatchObject({
             p_phone: sender,
             p_status: 'DECLINED',
@@ -97,6 +99,63 @@ describe('webhook do Omni', () => {
     });
 
     it.each([
+        ['scale_confirm', 'CONFIRMED', 'Confirmar presença'],
+        ['scale_decline', 'DECLINED', 'Não poderei tocar'],
+    ])('registra o botão real do Omni e envia os avisos após %s', async (action, status, title) => {
+        vi.stubEnv('OMNI_SECRET_KEY', 'fake-api-key');
+        const outbound = [];
+        vi.stubGlobal('fetch', async (url, options) => {
+            const body = JSON.parse(options.body);
+            if (String(url).includes('/rest/v1/rpc/')) {
+                expect(body).toEqual({ p_phone: sender, p_status: status, p_scale_id: scaleId });
+                return Response.json({
+                    success: true,
+                    musician_phone: sender,
+                    musician_message: 'Sua resposta foi registrada.',
+                    leader_phone: '5544999991111',
+                    leader_message: 'Lista atualizada da escala.',
+                });
+            }
+            expect(String(url)).toBe('https://api.omni.z-api.io/v1/channels/test-channel/messages');
+            outbound.push(body);
+            return Response.json({ messageId: 'message-accepted' });
+        });
+        const response = await webhook.fetch(signedRequest([
+            {
+                '@class': '.ButtonContent',
+                type: 'BUTTON',
+                title,
+                external_information: { button_reply_id: action + ':' + scaleId },
+            },
+        ], { eventOverrides: { messageEventType: undefined }, compress: true }));
+
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual({
+            success: true,
+            notifications: { musician: 'accepted', leader: 'accepted' },
+        });
+        expect(outbound).toEqual(expect.arrayContaining([
+            { recipient: { identifier: sender }, content: { type: 'TEXT', body: { message: 'Sua resposta foi registrada.' } } },
+            { recipient: { identifier: '5544999991111' }, content: { type: 'TEXT', body: { message: 'Lista atualizada da escala.' } } },
+        ]));
+        expect(outbound).toHaveLength(2);
+    });
+
+    it('usa a referência do envelope quando o Omni envia uma resposta citada', async () => {
+        let reply;
+        vi.stubGlobal('fetch', async (url, options) => {
+            reply = JSON.parse(options.body);
+            return Response.json({ ignored: true });
+        });
+        const response = await webhook.fetch(signedRequest(
+            [{ type: 'TEXT', message: '1' }],
+            { eventOverrides: { messageEventType: undefined }, messageOverrides: { reference_id: 'outgoing-message' } },
+        ));
+        expect(response.status).toBe(200);
+        expect(reply).toEqual({ p_phone: sender, p_status: 'CONFIRMED', p_reply_to: 'outgoing-message' });
+    });
+
+    it.each([
         ['outro canal', { channel_id: 'other-channel' }],
         ['mensagem do próprio canal', { metadata: { from_me: true } }],
     ])('ignora %s antes de consultar o banco', async (_name, messageOverrides) => {
@@ -114,6 +173,7 @@ describe('webhook do Omni', () => {
         vi.stubGlobal('fetch', database);
         const response = await webhook.fetch(signedRequest([{ type: 'TEXT', message: '1' }]));
         expect(response.status).toBe(200);
+        expect(await response.json()).toEqual({ ignored: true, reason: 'not_a_scale_response' });
         expect(database).not.toHaveBeenCalled();
     });
 });

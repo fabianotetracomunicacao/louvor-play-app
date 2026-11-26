@@ -24,7 +24,8 @@ function validSignature(body, headers, secret) {
 function getScaleResponse(event, channelId) {
     const incoming = event?.message;
     const phone = incoming?.sender?.identifier;
-    if (event?.messageEventType !== 'NEW_MESSAGE' || incoming?.channel_id !== channelId ||
+    const eventType = event?.messageEventType;
+    if ((eventType !== undefined && eventType !== 'NEW_MESSAGE') || incoming?.channel_id !== channelId ||
         incoming?.metadata?.from_me !== false || incoming?.metadata?.middleware !== 'META_WHATSAPP' ||
         typeof phone !== 'string' || !/^\+?\d{8,15}$/.test(phone) || !Array.isArray(incoming?.contents)) {
         return null;
@@ -34,6 +35,7 @@ function getScaleResponse(event, channelId) {
         if (!content || content.internal_information?.group_id) continue;
         const details = content.internal_information;
         const candidates = [
+            content.external_information?.button_reply_id,
             content.payload, content.button_id, content.selected_button_id, content.button_reply?.id,
             details?.payload, details?.button_id, details?.selected_button_id, details?.buttonId,
             details?.button_reply?.id, content.id, content.message,
@@ -47,7 +49,7 @@ function getScaleResponse(event, channelId) {
             }
         }
 
-        const replyTo = content.message_id_reply;
+        const replyTo = content.message_id_reply || incoming.reference_id;
         if (typeof replyTo !== 'string' || !/^[a-z0-9_.=-]{1,200}$/i.test(replyTo)) continue;
         const text = String(content.message || content.title || '').trim().toLowerCase()
             .normalize('NFD').replace(/\p{Diacritic}/gu, '');
@@ -95,7 +97,7 @@ export default {
             return Response.json({ error: 'invalid_body' }, { status: 400 });
         }
         const reply = getScaleResponse(event, channelId);
-        if (!reply) return Response.json({ ignored: true });
+        if (!reply) return Response.json({ ignored: true, reason: 'not_a_scale_response' });
 
         const supabase = createServerSupabase();
         if (!supabase) return Response.json({ error: 'database_not_configured' }, { status: 503 });
@@ -105,17 +107,22 @@ export default {
             console.error('[omni webhook] Scale response failed', error.code);
             return Response.json({ error: 'processing_failed' }, { status: 500 });
         }
-        if (!data?.success) return Response.json({ ignored: true });
+        if (!data?.success) return Response.json({ ignored: true, reason: 'pending_scale_not_found' });
 
-        const deliveries = await Promise.allSettled([
-            sendOmniText(data.musician_phone, data.musician_message, { timeout: 1700 }),
-            sendOmniText(data.leader_phone, data.leader_message, { timeout: 1700 }),
-        ]);
-        for (const delivery of deliveries) {
-            if (delivery.status === 'rejected' || delivery.value?.error) {
-                console.warn('[omni webhook] WhatsApp acknowledgment was not accepted', delivery.value?.error);
+        const recipients = ['musician', 'leader'];
+        const results = await Promise.allSettled(recipients.map(async (recipient) => {
+            const result = await sendOmniText(data[recipient + '_phone'], data[recipient + '_message'], { timeout: 1700 });
+            if (!result) return 'skipped';
+            return result.messageId ? 'accepted' : result.error;
+        }));
+        const notifications = Object.fromEntries(results.map((result, index) => {
+            const recipient = recipients[index];
+            const outcome = result.status === 'fulfilled' ? result.value : 'failed';
+            if (outcome !== 'accepted' && outcome !== 'skipped') {
+                console.warn('[omni webhook] WhatsApp acknowledgment was not accepted', recipient, outcome);
             }
-        }
-        return Response.json({ success: true });
+            return [recipient, outcome];
+        }));
+        return Response.json({ success: true, notifications });
     },
 };

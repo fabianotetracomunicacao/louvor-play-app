@@ -66,7 +66,7 @@ export function PlaylistPage() {
     const { user, isEditor, isAdmin } = useAuth();
     const { myPlaylists, refreshPlaylists, isLoadingPlaylists } = useData(); // Use cached data
     const navigate = useNavigate();
-    const { showToast, confirmAction } = useNotification();
+    const { showToast, confirmAction, notifications } = useNotification();
     const [searchParams, setSearchParams] = useSearchParams();
     const { id: routeId } = useParams();
     const location = useLocation();
@@ -318,11 +318,28 @@ export function PlaylistPage() {
         return comments.filter(c => new Date(c.created_at) > new Date(lastReadTime)).length;
     }, [comments, lastReadTime, selectedPlaylist]);
 
+    const displayedPlaylistId = selectedPlaylist?.id;
+    const latestScaleResponse = notifications.find(notification =>
+        notification.data?.event === 'whatsapp_scale_response' && notification.data?.playlistId === displayedPlaylistId
+    )?.id;
+
     useEffect(() => {
-        if (selectedPlaylist && playlistView === 'setlists') {
-            loadSetlists();
-        }
-    }, [selectedPlaylist?.id, playlistView]);
+        if (!displayedPlaylistId || playlistView !== 'setlists') return;
+
+        let active = true;
+        let latestRequest = 0;
+        const refresh = async () => {
+            const request = ++latestRequest;
+            const setlists = await getSetlists(displayedPlaylistId);
+            if (active && request === latestRequest) setSetlists(setlists);
+        };
+        refresh();
+        window.addEventListener('focus', refresh);
+        return () => {
+            active = false;
+            window.removeEventListener('focus', refresh);
+        };
+    }, [displayedPlaylistId, playlistView, latestScaleResponse]);
 
     // Auto-open chat or set view if navigated with state or search params
     useEffect(() => {

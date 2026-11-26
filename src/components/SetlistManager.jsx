@@ -4,6 +4,7 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
 import { getSongFunctions, searchProfiles, getSetlistScale, addUserToSetlistScale, removeUserFromSetlistScale, getPlaylistMembers, getInstruments, mapSongFromDb } from '../utils/storage';
 import { supabase } from '../supabaseClient';
+import { useNotification } from '../contexts/NotificationContext';
 import { Portal } from './Portal';
 import { User, Calendar, Shield, Search, UserPlus, Users } from 'lucide-react';
 
@@ -30,6 +31,7 @@ const getTimeInputValue = (value) => {
 };
 
 export function SetlistManager({ playlistId, songs = [], availableSongs = [], onClose, onSave, initialData }) {
+    const { notifications } = useNotification();
 
     const [currentStep, setCurrentStep] = useState(1); // 1: Dados & Escala, 2: Selecionar Músicas, 3: Organizar Culto
     const [mode, setMode] = useState('manual'); // 'manual' or 'auto'
@@ -58,16 +60,38 @@ export function SetlistManager({ playlistId, songs = [], availableSongs = [], on
     const [selectedRoles, setSelectedRoles] = useState([]);
     const [editingMemberId, setEditingMemberId] = useState(null);
 
+    const setlistId = initialData?.id;
+    const latestScaleResponse = notifications.find(notification =>
+        notification.data?.event === 'whatsapp_scale_response' && notification.data?.setlistId === setlistId
+    )?.id;
+
+    useEffect(() => {
+        if (!setlistId) return;
+
+        let active = true;
+        let latestRequest = 0;
+        const refresh = async () => {
+            const request = ++latestRequest;
+            try {
+                const members = await getSetlistScale(setlistId);
+                if (active && request === latestRequest) setScaleMembers(members);
+            } catch (error) {
+                console.error('Falha ao atualizar as confirmações da escala:', error);
+            } finally {
+                if (active && request === latestRequest) setLoadingScale(false);
+            }
+        };
+        setLoadingScale(true);
+        refresh();
+        window.addEventListener('focus', refresh);
+        return () => {
+            active = false;
+            window.removeEventListener('focus', refresh);
+        };
+    }, [setlistId, latestScaleResponse]);
+
     // Initial Data Loading
     useEffect(() => {
-        if (initialData?.id) {
-            setLoadingScale(true);
-            getSetlistScale(initialData.id)
-                .then(setScaleMembers)
-                .catch(console.error)
-                .finally(() => setLoadingScale(false));
-        }
-
         // Load Playlist Members for suggestions (AND Owner)
         if (playlistId) {
             Promise.all([
@@ -155,7 +179,7 @@ export function SetlistManager({ playlistId, songs = [], availableSongs = [], on
                 setPlaylistMembers(enrichedMembers);
             });
         }
-    }, [initialData?.id, playlistId]);
+    }, [playlistId]);
 
     // Search Users Effect (Local Filter now)
     useEffect(() => {

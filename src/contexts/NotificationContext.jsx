@@ -84,6 +84,7 @@ export const NotificationProvider = ({ children }) => {
         }
 
         fetchNotifications();
+        window.addEventListener('focus', fetchNotifications);
 
         const subscription = supabase
             .channel(`public:notifications:${user.id}`)
@@ -102,6 +103,7 @@ export const NotificationProvider = ({ children }) => {
 
         return () => {
             mounted = false;
+            window.removeEventListener('focus', fetchNotifications);
             if (subscription) {
                 supabase.removeChannel(subscription);
             }

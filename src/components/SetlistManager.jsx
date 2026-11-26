@@ -3,7 +3,6 @@ import { X, Save, Shuffle, List, Music, Plus, Trash2, ArrowRight, RotateCcw, Che
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
 import { getSongFunctions, searchProfiles, getSetlistScale, addUserToSetlistScale, removeUserFromSetlistScale, getPlaylistMembers, getInstruments, mapSongFromDb } from '../utils/storage';
-import { WhatsAppService } from '../services/WhatsAppService';
 import { supabase } from '../supabaseClient';
 import { Portal } from './Portal';
 import { User, Calendar, Shield, Search, UserPlus, Users } from 'lucide-react';
@@ -209,7 +208,9 @@ export function SetlistManager({ playlistId, songs = [], availableSongs = [], on
             
             if (!String(memberId).startsWith('temp_') && initialData?.id) {
                 try {
-                    await addUserToSetlistScale(initialData.id, user.id, role);
+                    const { error } = await supabase.from('setlist_scales')
+                        .update({ role }).eq('id', memberId);
+                    if (error) throw error;
                 } catch (e) {
                     console.error("Error updating role:", e);
                 }
@@ -226,23 +227,6 @@ export function SetlistManager({ playlistId, songs = [], availableSongs = [], on
                     if (result) {
                         setScaleMembers(prev => prev.map(m => m.id === tempId ? { ...m, id: result.id } : m));
 
-                        // ✅ Send WhatsApp notification to the musician if they have a phone
-                        const musicianPhone = user.whatsapp || user.phone;
-                        if (musicianPhone && result.id) {
-                            WhatsAppService.sendScaleConfirmation({
-                                scaleId: result.id,
-                                musicianPhone,
-                                musicianName: user.name || user.full_name || user.email || 'Músico',
-                                roleName: role,
-                                setlistTitle: initialData?.name || initialData?.title || 'Culto',
-                                setlistDate: initialData?.date || scheduledDate,
-                                setlistTime: initialData?.service_time || initialData?.serviceTime || scheduledTime
-                            }).catch(err =>
-                                console.warn('[SetlistManager] WhatsApp notification failed (non-critical):', err)
-                            );
-                        } else if (!musicianPhone) {
-                            console.info(`[SetlistManager] Músico ${user.name} sem WhatsApp cadastrado — notificação ignorada.`);
-                        }
                     }
                 } catch (error) {
                     console.error("Error adding to scale:", error);

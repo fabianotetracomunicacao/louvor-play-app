@@ -1,154 +1,121 @@
-import { createClient } from '@supabase/supabase-js';
+import { createHmac, timingSafeEqual } from 'node:crypto';
+import { gunzipSync } from 'node:zlib';
+import { createServerSupabase, sendOmniText, scaleIdPattern } from '../server/omni.js';
 
-function getIncomingMessage(payload) {
-  return String(
-    payload?.text?.message ||
-      payload?.buttonReply?.message ||
-      payload?.buttonReply?.text ||
-      payload?.buttonsResponseMessage?.message ||
-      payload?.listResponseMessage?.title ||
-      payload?.listResponseMessage?.message ||
-      '',
-  ).trim();
+const maxBodySize = 1024 * 1024;
+const maxSignatureAge = 300;
+
+function validSignature(body, headers, secret) {
+    const signature = headers.get('x-webhook-signature') || '';
+    const match = /^t=(\d{1,12}),\s*v1=([a-f0-9]{64})$/i.exec(signature);
+    const idempotencyKey = /^(.+):(\d+):(\d+)$/.exec(headers.get('x-idempotency-key') || '');
+    if (!match || !idempotencyKey) return false;
+
+    const [, time, mac] = match;
+    if (Math.abs(Date.now() / 1000 - Number(time)) > maxSignatureAge) return false;
+
+    const [, topic, partition, offset] = idempotencyKey;
+    const hmac = createHmac('sha256', secret);
+    hmac.update([time, topic, partition, offset, ''].join('\n'));
+    hmac.update(body);
+    return timingSafeEqual(hmac.digest(), Buffer.from(mac, 'hex'));
 }
 
-function getButtonId(payload) {
-  return String(
-    payload?.buttonReply?.id ||
-      payload?.buttonReply?.buttonId ||
-      payload?.buttonsResponseMessage?.buttonId ||
-      payload?.buttonsResponseMessage?.selectedButtonId ||
-      payload?.selectedButtonId ||
-      '',
-  ).trim();
+function getScaleResponse(event, channelId) {
+    const incoming = event?.message;
+    const phone = incoming?.sender?.identifier;
+    if (event?.messageEventType !== 'NEW_MESSAGE' || incoming?.channel_id !== channelId ||
+        incoming?.metadata?.from_me !== false || incoming?.metadata?.middleware !== 'META_WHATSAPP' ||
+        typeof phone !== 'string' || !/^\+?\d{8,15}$/.test(phone) || !Array.isArray(incoming?.contents)) {
+        return null;
+    }
+
+    for (const content of incoming.contents) {
+        if (!content || content.internal_information?.group_id) continue;
+        const details = content.internal_information;
+        const candidates = [
+            content.payload, content.button_id, content.selected_button_id, content.button_reply?.id,
+            details?.payload, details?.button_id, details?.selected_button_id, details?.buttonId,
+            details?.button_reply?.id, content.id, content.message,
+        ];
+        for (const value of candidates) {
+            if (typeof value !== 'string') continue;
+            const [action, id, extra] = value.split(':');
+            if (extra === undefined && scaleIdPattern.test(id || '')) {
+                if (action === 'scale_confirm') return { p_phone: phone, p_scale_id: id, p_status: 'CONFIRMED' };
+                if (action === 'scale_decline') return { p_phone: phone, p_scale_id: id, p_status: 'DECLINED' };
+            }
+        }
+
+        const replyTo = content.message_id_reply;
+        if (typeof replyTo !== 'string' || !/^[a-z0-9_.=-]{1,200}$/i.test(replyTo)) continue;
+        const text = String(content.message || content.title || '').trim().toLowerCase()
+            .normalize('NFD').replace(/\p{Diacritic}/gu, '');
+        if (/^(1|sim|confirmo|confirmar presenca)$/.test(text)) {
+            return { p_phone: phone, p_reply_to: replyTo, p_status: 'CONFIRMED' };
+        }
+        if (/^(2|nao|recuso|nao poderei tocar)$/.test(text)) {
+            return { p_phone: phone, p_reply_to: replyTo, p_status: 'DECLINED' };
+        }
+    }
+    return null;
 }
 
-function normalizePhone(phone) {
-  if (!phone) return '';
-  let digits = String(phone).replace(/\D/g, '');
-  if (!digits) return '';
-  if (!digits.startsWith('55')) digits = `55${digits}`;
-  if (digits.length === 12) {
-    const ddd = digits.slice(2, 4);
-    const rest = digits.slice(4);
-    digits = `55${ddd}9${rest}`;
-  }
-  return digits;
-}
+export default {
+    async fetch(request) {
+        if (request.method !== 'POST') {
+            return Response.json({ error: 'method_not_allowed' }, { status: 405, headers: { Allow: 'POST' } });
+        }
+        const { OMNI_WEBHOOK_SECRET: secret, OMNI_CHANNEL_ID: channelId } = process.env;
+        if (!secret || !channelId) {
+            return Response.json({ error: 'webhook_not_configured' }, { status: 503 });
+        }
+        if (!request.headers.has('x-webhook-signature')) {
+            return Response.json({ error: 'invalid_signature' }, { status: 401 });
+        }
 
-async function getZApiConfig(supabase) {
-  const { data, error } = await supabase
-    .from('app_settings')
-    .select('key, value')
-    .in('key', ['zapi_instance_id', 'zapi_instance_token', 'zapi_client_token']);
+        let body;
+        try {
+            body = Buffer.from(await request.arrayBuffer());
+            if (body.length > maxBodySize) return new Response(null, { status: 413 });
+            if (request.headers.get('content-encoding') === 'gzip' && body[0] === 0x1f && body[1] === 0x8b) {
+                body = gunzipSync(body, { maxOutputLength: maxBodySize });
+            }
+        } catch {
+            return Response.json({ error: 'invalid_body' }, { status: 400 });
+        }
+        if (!validSignature(body, request.headers, secret)) {
+            return Response.json({ error: 'invalid_signature' }, { status: 401 });
+        }
 
-  if (error) throw error;
+        let event;
+        try {
+            event = JSON.parse(body.toString('utf8'));
+        } catch {
+            return Response.json({ error: 'invalid_body' }, { status: 400 });
+        }
+        const reply = getScaleResponse(event, channelId);
+        if (!reply) return Response.json({ ignored: true });
 
-  const config = {};
-  for (const row of data || []) {
-    config[row.key] = row.value || '';
-  }
+        const supabase = createServerSupabase();
+        if (!supabase) return Response.json({ error: 'database_not_configured' }, { status: 503 });
 
-  return {
-    instanceId: config.zapi_instance_id || '',
-    instanceToken: config.zapi_instance_token || '',
-    clientToken: config.zapi_client_token || '',
-  };
-}
+        const { data, error } = await supabase.rpc('process_omni_scale_response', reply);
+        if (error) {
+            console.error('[omni webhook] Scale response failed', error.code);
+            return Response.json({ error: 'processing_failed' }, { status: 500 });
+        }
+        if (!data?.success) return Response.json({ ignored: true });
 
-async function sendTextMessage(supabase, targetPhone, message) {
-  const config = await getZApiConfig(supabase);
-  const phone = normalizePhone(targetPhone);
-
-  if (!config.instanceId || !config.instanceToken || !phone || !message) {
-    return { skipped: true };
-  }
-
-  const headers = { 'Content-Type': 'application/json' };
-  if (config.clientToken) {
-    headers['Client-Token'] = config.clientToken;
-  }
-
-  const response = await fetch(
-    `https://api.z-api.io/instances/${config.instanceId}/token/${config.instanceToken}/send-text`,
-    {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        phone,
-        message,
-        delayMessage: 1,
-        delayTyping: 1,
-      }),
+        const deliveries = await Promise.allSettled([
+            sendOmniText(data.musician_phone, data.musician_message, { timeout: 1700 }),
+            sendOmniText(data.leader_phone, data.leader_message, { timeout: 1700 }),
+        ]);
+        for (const delivery of deliveries) {
+            if (delivery.status === 'rejected' || delivery.value?.error) {
+                console.warn('[omni webhook] WhatsApp acknowledgment was not accepted', delivery.value?.error);
+            }
+        }
+        return Response.json({ success: true });
     },
-  );
-
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    return { success: false, status: response.status, error: body };
-  }
-
-  return { success: true };
-}
-
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST');
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  const payload = req.body || {};
-
-  if (payload.fromMe === true || payload.isGroup === true || payload.isNewsletter === true) {
-    return res.status(200).json({ ignored: true, reason: 'not_direct_incoming_message' });
-  }
-
-  const supabaseUrl = process.env.VITE_SUPABASE_URL;
-  const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return res.status(500).json({ error: 'Supabase environment is not configured' });
-  }
-
-  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: { persistSession: false },
-  });
-
-  const { data, error } = await supabase.rpc('process_zapi_scale_response', {
-    p_phone: payload.phone || '',
-    p_message: getIncomingMessage(payload),
-    p_button_id: getButtonId(payload),
-    p_secret: req.query?.secret || req.headers['x-zapi-webhook-secret'] || '',
-  });
-
-  if (error) {
-    console.error('[zapi-webhook] RPC error:', error);
-    return res.status(500).json({ error: 'webhook_processing_failed' });
-  }
-
-  if (data?.success) {
-    const responsePayload = { ...data };
-
-    if (data?.leaderPhone && data?.leaderMessage) {
-      try {
-        responsePayload.leaderNotification = await sendTextMessage(supabase, data.leaderPhone, data.leaderMessage);
-      } catch (notificationError) {
-        console.error('[zapi-webhook] Leader notification error:', notificationError);
-        responsePayload.leaderNotification = { success: false, error: 'leader_notification_failed' };
-      }
-    }
-
-    if (data?.musicianPhone && data?.musicianMessage) {
-      try {
-        responsePayload.musicianNotification = await sendTextMessage(supabase, data.musicianPhone, data.musicianMessage);
-      } catch (notificationError) {
-        console.error('[zapi-webhook] Musician notification error:', notificationError);
-        responsePayload.musicianNotification = { success: false, error: 'musician_notification_failed' };
-      }
-    }
-
-    return res.status(200).json(responsePayload);
-  }
-
-  return res.status(200).json(data);
-}
+};

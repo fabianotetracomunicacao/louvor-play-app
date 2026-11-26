@@ -1269,31 +1269,11 @@ export async function addUserToSetlistScale(setlistId, userId, role = null, opti
         // 3. Create Notification
         await createNotification(userId, 'Nova Escala', message, 'info', link);
 
-        // 4. Trigger Automatic WhatsApp Confirmation (Async)
-        try {
-            const { data: musicianProfile } = await supabase
-                .from('profiles')
-                .select('name, full_name, phone, whatsapp')
-                .eq('id', userId)
-                .single();
+    }
 
-            const phone = musicianProfile?.whatsapp || musicianProfile?.phone;
-            const musicianName = musicianProfile?.name || musicianProfile?.full_name || 'Músico';
-
-            if (phone) {
-                WhatsAppService.sendScaleConfirmation({
-                    scaleId: data.id,
-                    musicianPhone: phone,
-                    musicianName,
-                    roleName: role,
-                    setlistTitle,
-                    setlistDate: setlist.date,
-                    setlistTime: setlist.service_time
-                }).catch(err => console.warn('[WhatsApp AutoSend] Error:', err));
-            }
-        } catch (e) {
-            console.warn('[WhatsApp AutoSend] Warning preparing message:', e);
-        }
+    if (options.sendWhatsApp !== false) {
+        WhatsAppService.sendScaleConfirmation({ scaleId: data.id })
+            .catch(err => console.warn('[WhatsApp] Falha ao solicitar convite:', err.message));
     }
 
     return data;
